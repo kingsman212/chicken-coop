@@ -62,9 +62,11 @@ services:
     restart: unless-stopped
     ports:
       - "80:80"
+      - "443:443"
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
       - ./chicken-choop/public:/var/www/html/public:ro
+      - /etc/letsencrypt:/etc/letsencrypt:ro
     depends_on:
       - app
 
