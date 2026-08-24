@@ -6,22 +6,24 @@ services:
     image: mysql:8.0
     container_name: chicken_coop_db
     restart: unless-stopped
-    env_file: .env.docker
+    env_file:
+      - .env.docker
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
-      MYSQL_DATABASE: ${MYSQL_DATABASE}
-      MYSQL_USER: ${MYSQL_USER}
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpassword}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-db_chicken_choop}
+      MYSQL_USER: ${MYSQL_USER:-smartcoop_user}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-userpassword}
     # Port 3306 tidak diekspos ke host — komunikasi internal Docker saja
     expose:
       - "3306"
     volumes:
       - db_data:/var/lib/mysql
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
-      interval: 10s
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u root -p$${MYSQL_ROOT_PASSWORD:-rootpassword} || exit 1"]
+      interval: 5s
       timeout: 5s
-      retries: 10
+      retries: 15
+      start_period: 15s
 
   # ── MQTT Broker (Eclipse Mosquitto) ────────────────────────
   mosquitto:
@@ -29,10 +31,9 @@ services:
     container_name: chicken_coop_mosquitto
     restart: unless-stopped
     ports:
-      - "1883:1883"   # MQTT standard (hanya untuk ESP8266 lokal)
+      - "1883:1883"   # MQTT standard (ESP8266 & Laravel)
     volumes:
       - ./mosquitto_eclipse_conf/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
-      - ./mosquitto_eclipse_conf/passwd:/mosquitto/config/passwd:ro
       - mosquitto_data:/mosquitto/data
       - mosquitto_log:/mosquitto/log
 
