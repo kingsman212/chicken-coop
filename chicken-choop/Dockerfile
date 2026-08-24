@@ -53,11 +53,17 @@ RUN mkdir -p /shared/public && chmod -R 755 /shared/public
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
+# Konfigurasi PHP-FPM agar listen di 0.0.0.0:9000 (menerima koneksi dari container Nginx)
+RUN echo "[www]" > /usr/local/etc/php-fpm.d/zz-docker.conf \
+    && echo "listen = 0.0.0.0:9000" >> /usr/local/etc/php-fpm.d/zz-docker.conf \
+    && echo "listen.owner = www-data" >> /usr/local/etc/php-fpm.d/zz-docker.conf \
+    && echo "listen.group = www-data" >> /usr/local/etc/php-fpm.d/zz-docker.conf
+
 # PHP-FPM berjalan di port 9000
 EXPOSE 9000
 
 ENTRYPOINT ["docker-entrypoint.sh"]
 
 # Default command: jalankan PHP-FPM (production web server)
-CMD ["php-fpm"]
+CMD ["php-fpm", "-F"]
 
