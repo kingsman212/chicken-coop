@@ -1,0 +1,10 @@
+node_modules
+vendor
+public/build
+public/storage
+storage/*.key
+.env
+.git
+.gitignore
+Dockerfile
+docker-entrypoint.sh

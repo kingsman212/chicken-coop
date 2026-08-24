@@ -1,0 +1,28 @@
+﻿# Environment files with secrets
+.env.docker
+.env
+.env.*
+!.env.docker.example
+!.env.example
+
+# Mosquitto password file & logs
+mosquitto_eclipse_conf/passwd
+mosquitto_data/
+mosquitto_log/
+
+# Node / Vendor
+node_modules/
+vendor/
+
+# Ansible secrets / keys
+ansible/*.pem
+ansible/*.key
+ansible/*.retry
+ansible/.vault_pass
+
+# OS / Editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+ssh/
