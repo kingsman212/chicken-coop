@@ -25,8 +25,11 @@ class MqttListenCommand extends Command
         try {
             $mqtt = new MqttClient($host, $port, $clientId);
             $settings = (new ConnectionSettings())->setConnectTimeout(10);
-            if (!empty($username) && !empty($password)) {
-                $settings->setAuth($username, $password);
+            if (!empty($username)) {
+                $settings = $settings->setUsername($username);
+            }
+            if (!empty($password)) {
+                $settings = $settings->setPassword($password);
             }
             $mqtt->connect($settings, true);
 

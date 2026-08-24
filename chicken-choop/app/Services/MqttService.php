@@ -40,8 +40,11 @@ class MqttService
                 ->setConnectTimeout(5)
                 ->setUseTls(false);
 
-            if (!empty($this->username) && !empty($this->password)) {
-                $connectionSettings->setAuth($this->username, $this->password);
+            if (!empty($this->username)) {
+                $connectionSettings = $connectionSettings->setUsername($this->username);
+            }
+            if (!empty($this->password)) {
+                $connectionSettings = $connectionSettings->setPassword($this->password);
             }
 
             $mqtt->connect($connectionSettings, true);
