@@ -17,6 +17,7 @@ RUN apk add --no-cache \
     libjpeg-turbo-dev \
     freetype-dev \
     oniguruma-dev \
+    linux-headers \
     zip \
     unzip \
     git \
