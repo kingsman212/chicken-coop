@@ -92,7 +92,7 @@ php artisan view:cache
 
 # Salin public assets ke shared volume agar nginx bisa melayani static files
 echo "Copying public assets to shared nginx volume..."
-cp -ru /var/www/html/public/. /shared/public/
+cp -rf /var/www/html/public/. /shared/public/
 echo "Public assets copied successfully."
 
 echo "Starting process: $@"
