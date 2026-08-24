@@ -41,12 +41,13 @@ COPY --from=node_builder /app/public/build ./public/build
 # Install PHP dependencies (production only, no dev packages)
 RUN composer install --no-dev --optimize-autoloader --no-interaction
 
-# Set directory permissions dengan user www-data (bukan 777!)
+# Set directory permissions dengan user www-data
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache \
-    && chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache
+    && chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache \
+    && chmod -R 755 /var/www/html/public
 
 # Buat direktori shared untuk static assets (akan di-copy ke volume saat startup)
-RUN mkdir -p /shared/public
+RUN mkdir -p /shared/public && chmod -R 755 /shared/public
 
 # Copy entrypoint script and make it executable
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
