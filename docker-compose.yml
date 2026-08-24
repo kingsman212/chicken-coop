@@ -44,12 +44,11 @@ services:
       dockerfile: Dockerfile
     container_name: chicken_coop_app
     restart: unless-stopped
-    env_file: .env.docker
+    env_file:
+      - .env.docker
     # Port 9000 (PHP-FPM) tidak diekspos ke luar — nginx yang menjadi proxy
     expose:
       - "9000"
-    volumes:
-      - app_public:/shared/public   # Shared dengan nginx untuk static assets
     depends_on:
       db:
         condition: service_healthy
@@ -65,7 +64,7 @@ services:
       - "80:80"
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
-      - app_public:/var/www/html/public:ro   # Static assets dari app
+      - ./chicken-choop/public:/var/www/html/public:ro
     depends_on:
       - app
 
@@ -77,13 +76,12 @@ services:
     container_name: chicken_coop_mqtt_worker
     restart: unless-stopped
     command: ["php", "artisan", "mqtt:listen"]
-    env_file: .env.docker
+    env_file:
+      - .env.docker
     depends_on:
       db:
         condition: service_healthy
       mosquitto:
-        condition: service_started
-      app:
         condition: service_started
 
   # ── phpMyAdmin (Database Management Tool) ──────────────────
@@ -106,4 +104,3 @@ volumes:
   db_data:
   mosquitto_data:
   mosquitto_log:
-  app_public:      # Shared volume: app (PHP-FPM) → nginx (static files)
