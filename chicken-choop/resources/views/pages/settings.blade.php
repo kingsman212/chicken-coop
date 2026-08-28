@@ -17,19 +17,19 @@
         <form id="settings-page-form" onsubmit="savePageSettings(event)" class="space-y-4">
             <div>
                 <label class="block text-xs font-semibold text-slate-600 mb-1">Batas Minimum Suhu (°C)</label>
-                <input type="number" step="0.5" id="page-temp-min" value="{{ number_format($settings->temp_min, 1) }}" required class="form-input text-xs font-mono">
-                <p class="text-[10px] text-slate-400 mt-1"><i class="fa-solid fa-circle-info text-[9px] mr-0.5"></i> Jika Suhu < Min &rarr; Lampu Pemanas otomatis AKTIF (dalam Mode Auto).</p>
+                <input type="number" step="0.5" min="10" max="45" id="page-temp-min" value="{{ number_format($settings->temp_min, 1) }}" required class="form-input text-xs font-mono">
+                <p class="text-[10px] text-slate-400 mt-1"><i class="fa-solid fa-circle-info text-[9px] mr-0.5"></i> Jika Suhu < Min &rarr; Lampu Pemanas otomatis AKTIF (dalam Mode Auto). Rentang: 10°C – 45°C.</p>
             </div>
 
             <div>
                 <label class="block text-xs font-semibold text-slate-600 mb-1">Batas Maksimum Suhu (°C)</label>
-                <input type="number" step="0.5" id="page-temp-max" value="{{ number_format($settings->temp_max, 1) }}" required class="form-input text-xs font-mono">
-                <p class="text-[10px] text-slate-400 mt-1"><i class="fa-solid fa-circle-info text-[9px] mr-0.5"></i> Jika Suhu > Max &rarr; Kipas Pendingin otomatis AKTIF (dalam Mode Auto).</p>
+                <input type="number" step="0.5" min="15" max="50" id="page-temp-max" value="{{ number_format($settings->temp_max, 1) }}" required class="form-input text-xs font-mono">
+                <p class="text-[10px] text-slate-400 mt-1"><i class="fa-solid fa-circle-info text-[9px] mr-0.5"></i> Jika Suhu > Max &rarr; Kipas Pendingin otomatis AKTIF (dalam Mode Auto). Rentang: > Min hingga 50°C.</p>
             </div>
 
             <div>
                 <label class="block text-xs font-semibold text-slate-600 mb-1">Batas Minimum Level Air (%)</label>
-                <input type="number" step="1" id="page-water-min" value="{{ number_format($settings->water_min, 0) }}" required class="form-input text-xs font-mono">
+                <input type="number" step="1" min="5" max="90" id="page-water-min" value="{{ number_format($settings->water_min, 0) }}" required class="form-input text-xs font-mono">
                 <p class="text-[10px] text-slate-400 mt-1"><i class="fa-solid fa-circle-info text-[9px] mr-0.5"></i> Jika Level Air < Min &rarr; Pompa Air otomatis AKTIF mengisi wadah (dalam Mode Auto).</p>
             </div>
 
@@ -144,12 +144,19 @@
                 body: JSON.stringify({ temp_min, temp_max, water_min, control_mode })
             });
             const result = await res.json();
-            if (result.success) {
+            if (res.ok && result.success) {
                 pushNotification('Pengaturan Disimpan', 'Konfigurasi threshold berhasil disimpan & dikirim via MQTT.', 'info');
                 setTimeout(() => location.reload(), 1000);
+            } else {
+                let errorMsg = result.message || 'Gagal menyimpan pengaturan.';
+                if (result.errors) {
+                    errorMsg = Object.values(result.errors).flat().join('\n');
+                }
+                alert('Gagal menyimpan pengaturan:\n' + errorMsg);
             }
         } catch (err) {
             console.error('Save settings error:', err);
+            alert('Terjadi kesalahan jaringan saat menyimpan pengaturan.');
         }
         btn.disabled = false;
         btn.innerHTML = '<i class="fa-solid fa-floppy-disk text-[10px]"></i> Simpan & Push ke MQTT';

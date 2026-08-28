@@ -32,9 +32,12 @@ sudo certbot certonly --webroot \
     --no-eff-email \
     --non-interactive
 
-if [ -f "/etc/letsencrypt/live/$DOMAIN/fullchain.pem" ]; then
-    echo "✅ Sertifikat SSL berhasil dibuat!"
+if sudo test -f "/etc/letsencrypt/live/$DOMAIN/fullchain.pem"; then
+    echo "✅ Sertifikat SSL valid dan siap digunakan!"
     
+    # Berikan izin baca agar container Nginx dapat membaca file sertifikat
+    sudo chmod -R 755 /etc/letsencrypt/live /etc/letsencrypt/archive
+
     echo "Menerapkan konfigurasi HTTPS ke Nginx..."
     cp nginx/nginx-ssl.conf.example nginx/nginx.conf
 

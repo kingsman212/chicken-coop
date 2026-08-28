@@ -65,9 +65,9 @@ class ActuatorController extends Controller
     public function updateSettings(Request $request)
     {
         $request->validate([
-            'temp_min' => 'required|numeric|min:10|max:30',
-            'temp_max' => 'required|numeric|gt:temp_min|max:45',
-            'water_min' => 'required|numeric|min:5|max:50',
+            'temp_min' => 'required|numeric|min:10|max:45|lt:temp_max',
+            'temp_max' => 'required|numeric|gt:temp_min|max:50',
+            'water_min' => 'required|numeric|min:5|max:90',
             'control_mode' => 'required|in:auto,manual',
         ]);
 
