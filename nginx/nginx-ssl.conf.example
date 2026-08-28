@@ -1,0 +1,64 @@
+# ============================================================
+# SmartCoop — Nginx HTTPS (SSL) Configuration
+# Gunakan konfigurasi ini setelah sertifikat Let's Encrypt berhasil dibuat
+# ============================================================
+
+# 1. Redirect HTTP (Port 80) ke HTTPS (Port 443)
+server {
+    listen 80;
+    server_name chicken-choop.duckdns.org;
+
+    # Tetap sediakan endpoint acme-challenge untuk certbot renew
+    location /.well-known/acme-challenge/ {
+        root /var/www/html/public;
+        try_files $uri =404;
+    }
+
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+# 2. Server HTTPS (Port 443)
+server {
+    listen 443 ssl http2;
+    server_name chicken-choop.duckdns.org;
+
+    root /var/www/html/public;
+    index index.php index.html;
+
+    charset utf-8;
+
+    # Sertifikat SSL Let's Encrypt
+    ssl_certificate /etc/letsencrypt/live/chicken-choop.duckdns.org/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/chicken-choop.duckdns.org/privkey.pem;
+
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers HIGH:!aNULL:!MD5;
+    ssl_prefer_server_ciphers on;
+
+    location / {
+        try_files $uri $uri/ /index.php?$query_string;
+    }
+
+    location = /favicon.ico { access_log off; log_not_found off; }
+    location = /robots.txt  { access_log off; log_not_found off; }
+
+    error_page 404 /index.php;
+
+    location ~ \.php$ {
+        fastcgi_pass app:9000;
+        fastcgi_index index.php;
+        fastcgi_param SCRIPT_FILENAME /var/www/html/public$fastcgi_script_name;
+        include fastcgi_params;
+        fastcgi_hide_header X-Powered-By;
+        fastcgi_buffer_size 128k;
+        fastcgi_buffers 4 256k;
+        fastcgi_busy_buffers_size 256k;
+        fastcgi_read_timeout 60;
+    }
+
+    location ~ /\.(?!well-known).* {
+        deny all;
+    }
+}

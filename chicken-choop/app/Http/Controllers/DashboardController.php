@@ -81,8 +81,28 @@ class DashboardController extends Controller
     public function getState()
     {
         $settings = SystemSetting::instance();
-        $latestTemp = TemperatureLog::latest('recorded_at')->first();
-        $latestWater = WaterPumpLog::latest('recorded_at')->first();
+
+        // ── [FIX #4] Baca dari Cache terlebih dahulu untuk data realtime ────────
+        // Cache diisi setiap kali telemetri datang dari firmware (setiap ~3 detik).
+        // Ini memastikan /api/state selalu mengembalikan nilai suhu/air terbaru,
+        // bahkan saat DB tidak diupdate (event-based, hanya saat status berubah).
+        $cachedTemp  = \Illuminate\Support\Facades\Cache::get('last_temperature');
+        $cachedWater = \Illuminate\Support\Facades\Cache::get('last_water');
+
+        // Fallback ke DB jika cache kosong (misal: server baru restart)
+        if ($cachedTemp) {
+            $latestTemp = (object) $cachedTemp;
+        } else {
+            $latestTemp = TemperatureLog::latest('recorded_at')->first();
+        }
+
+        if ($cachedWater) {
+            $latestWater = (object) $cachedWater;
+        } else {
+            $latestWater = WaterPumpLog::latest('recorded_at')->first();
+        }
+        // ─────────────────────────────────────────────────────────────────────
+
         $lastFeeding = FeedingLog::latest('fed_at')->first();
         $activeEmergency = TemperatureEmergency::whereNull('resolved_at')->latest('started_at')->first();
 
@@ -111,17 +131,18 @@ class DashboardController extends Controller
         }
 
         return response()->json([
-            'settings' => $settings,
-            'latest_temp' => $latestTemp,
-            'latest_water' => $latestWater,
-            'last_feeding' => $lastFeeding ? [
-                'source' => $lastFeeding->source,
-                'schedule_label' => $lastFeeding->schedule_label,
-                'portion_grams' => $lastFeeding->portion_grams,
-                'formatted_time' => $lastFeeding->fed_at->format('d-m-Y H:i'),
+            'settings'         => $settings,
+            'latest_temp'      => $latestTemp,
+            'latest_water'     => $latestWater,
+            'from_cache'       => ['temp' => (bool)$cachedTemp, 'water' => (bool)$cachedWater],
+            'last_feeding'     => $lastFeeding ? [
+                'source'          => $lastFeeding->source,
+                'schedule_label'  => $lastFeeding->schedule_label,
+                'portion_grams'   => $lastFeeding->portion_grams,
+                'formatted_time'  => $lastFeeding->fed_at->format('d-m-Y H:i'),
                 'diff_for_humans' => $lastFeeding->fed_at->diffForHumans(),
             ] : null,
-            'next_schedule' => $nextSchedule,
+            'next_schedule'    => $nextSchedule,
             'active_emergency' => $activeEmergency,
         ]);
     }

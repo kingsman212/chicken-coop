@@ -22,6 +22,20 @@
  *    D2 → Relay Kipas Pendingin
  *    D8 → Buzzer Alarm
  * ============================================================
+ *
+ *  CHANGELOG PERBAIKAN:
+ *    [FIX] Buzzer non-blocking (millis-based), tidak lagi pakai delay()
+ *    [FIX] MQTT reconnect non-blocking, tidak memblokir loop() & telemetri
+ *    [FIX] Auto-mode kipas stabil: safety check konflik lampu+kipas
+ *          dilakukan SEBELUM evaluasi histeresis individu
+ *    [FIX] Debounce sensor DHT22: alarm hanya setelah 3x gagal berturut
+ *    [FIX] Interval telemetri 3 detik (lebih responsif di website)
+ *    [FIX] manualLampOverride & manualFanOverride di-reset saat mode AUTO
+ *          diterima via chickencoop/config/settings (Bug #2 Fix)
+ *    [FIX] Publish telemetri segera setelah perintah manual diterima
+ *          (device/lamp, device/fan, device/control) → web UI update instan
+ *    [ARCH] Server tidak lagi override relay — firmware adalah master kontrol
+ * ============================================================
  */
 
 #include <Arduino.h>
@@ -45,10 +59,10 @@
 // ============================================================
 const char* ssid        = "Dikajarazaki";
 const char* password    = "Apasandinya?";
-const char* mqtt_server = "192.168.1.4"; // IP lokal komputer Mosquitto
+const char* mqtt_server = "192.168.1.4";
 const int   mqtt_port   = 1883;
-const char* mqtt_user   = "esp_device";  // Username MQTT (kosongkan jika tanpa auth)
-const char* mqtt_pass   = "changeme_esp";// Password MQTT (sesuai setup-mqtt-auth.sh)
+const char* mqtt_user   = "laravel_worker";
+const char* mqtt_pass   = "rezatugasakhir09";
 
 WiFiClient   espClient;
 PubSubClient client(espClient);
@@ -78,11 +92,31 @@ bool sensorError  = false; // true jika DHT22 rusak / gagal dibaca
 bool manualLampOverride = false;
 bool manualFanOverride  = false;
 
-unsigned long lastTelemetryMs  = 0;
-const long    TELEMETRY_INTERVAL = 5000; // Kirim telemetri setiap 5 detik
+// Debounce sensor: hitung kegagalan berturut-turut sebelum alarm
+uint8_t       sensorFailCount      = 0;
+const uint8_t SENSOR_FAIL_THRESHOLD = 3; // alarm setelah 3x gagal berturut
 
 // ============================================================
-// HELPER: KONTROL RELAY & BUZZER
+// TIMING NON-BLOCKING
+// ============================================================
+unsigned long lastTelemetryMs   = 0;
+const long    TELEMETRY_INTERVAL = 3000; // 3 detik → lebih responsif di website
+
+// --- Non-blocking buzzer ---
+bool          buzzerActive       = false;
+unsigned long buzzerOnUntilMs    = 0;
+unsigned long buzzerPauseUntilMs = 0;
+int           buzzerBeepsLeft    = 0;
+int           buzzerOnDurationMs = 100;
+
+// --- Non-blocking MQTT reconnect ---
+unsigned long lastReconnectAttemptMs = 0;
+const long    RECONNECT_INTERVAL     = 5000;
+int           reconnectRetries       = 0;
+const int     MAX_RECONNECT_RETRIES  = 10;
+
+// ============================================================
+// HELPER: KONTROL RELAY
 // ============================================================
 void setRelay(uint8_t pin, bool state) {
   if (RELAY_ACTIVE_LOW) {
@@ -102,18 +136,53 @@ void setFan(bool state) {
   setRelay(RELAY_FAN, state);
 }
 
+// ============================================================
+// BUZZER: Non-blocking (tidak menggunakan delay)
+// ============================================================
 void setBuzzer(bool state) {
   digitalWrite(BUZZER_PIN, state ? HIGH : LOW);
 }
 
-void buzzerBeep(int count, int durationMs = 100) {
-  for (int i = 0; i < count; i++) {
-    setBuzzer(true);
-    delay(durationMs);
+/**
+ * Mulai urutan beep non-blocking.
+ * Panggil sekali; updateBuzzer() di loop() yang menyelesaikannya.
+ */
+void buzzerTrigger(int count, int durationMs = 100) {
+  if (count <= 0) return;
+  buzzerBeepsLeft    = count;
+  buzzerOnDurationMs = durationMs;
+  buzzerActive       = true;
+  buzzerPauseUntilMs = 0;
+  setBuzzer(true);
+  buzzerOnUntilMs    = millis() + durationMs;
+}
+
+/**
+ * Harus dipanggil di setiap iterasi loop().
+ * Mengelola on/off buzzer tanpa delay().
+ */
+void updateBuzzer() {
+  if (!buzzerActive) return;
+  unsigned long now = millis();
+
+  if (buzzerOnUntilMs > 0 && now >= buzzerOnUntilMs) {
     setBuzzer(false);
-    if (i < count - 1) delay(100);
+    buzzerOnUntilMs = 0;
+    buzzerBeepsLeft--;
+    if (buzzerBeepsLeft > 0) {
+      buzzerPauseUntilMs = now + 100; // jeda 100ms antar beep
+    } else {
+      buzzerActive = false;
+    }
+  }
+
+  if (buzzerPauseUntilMs > 0 && now >= buzzerPauseUntilMs) {
+    buzzerPauseUntilMs = 0;
+    setBuzzer(true);
+    buzzerOnUntilMs = now + buzzerOnDurationMs;
   }
 }
+
 
 // ============================================================
 // HELPER: PUBLISH MQTT
@@ -177,13 +246,17 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
     if (status == "ON") {
       setLamp(true);
       manualLampOverride = true;
-      buzzerBeep(2);
+      buzzerTrigger(1, 80); // 1 beep singkat, non-blocking
       Serial.println("[KONTROL] Lampu → ON (Manual Direct)");
     } else if (status == "OFF") {
       setLamp(false);
       manualLampOverride = true;
       Serial.println("[KONTROL] Lampu → OFF (Manual Direct)");
     }
+    // [IMPROVEMENT] Publish telemetri segera agar web UI langsung terupdate
+    float t = dht.readTemperature();
+    float h = dht.readHumidity();
+    publishTemperatureTelemetry(isnan(t) ? 0.0f : t, isnan(h) ? 0.0f : h);
     return;
   }
 
@@ -196,15 +269,20 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
     if (status == "ON") {
       setFan(true);
       manualFanOverride = true;
-      buzzerBeep(2);
+      buzzerTrigger(1, 80); // 1 beep singkat, non-blocking
       Serial.println("[KONTROL] Kipas → ON (Manual Direct)");
     } else if (status == "OFF") {
       setFan(false);
       manualFanOverride = true;
       Serial.println("[KONTROL] Kipas → OFF (Manual Direct)");
     }
+    // [IMPROVEMENT] Publish telemetri segera agar web UI langsung terupdate
+    float t = dht.readTemperature();
+    float h = dht.readHumidity();
+    publishTemperatureTelemetry(isnan(t) ? 0.0f : t, isnan(h) ? 0.0f : h);
     return;
   }
+
 
   // ----------------------------------------------------------
   // TOPIK: chickencoop/device/control
@@ -231,7 +309,7 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
       if (action == "ON") {
         setLamp(true);
         manualLampOverride = true;
-        buzzerBeep(2);
+        buzzerTrigger(1, 80); // non-blocking
         Serial.println("[AKTUATOR] Lampu → ON (Manual)");
       } else if (action == "OFF") {
         setLamp(false);
@@ -248,7 +326,7 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
       if (action == "ON") {
         setFan(true);
         manualFanOverride = true;
-        buzzerBeep(2);
+        buzzerTrigger(1, 80); // non-blocking
         Serial.println("[AKTUATOR] Kipas → ON (Manual)");
       } else if (action == "OFF") {
         setFan(false);
@@ -258,6 +336,13 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
         manualFanOverride = false;
         Serial.println("[AKTUATOR] Kipas → AUTO");
       }
+    }
+
+    // [IMPROVEMENT] Publish telemetri segera setelah state aktuator berubah
+    {
+      float t = dht.readTemperature();
+      float h = dht.readHumidity();
+      publishTemperatureTelemetry(isnan(t) ? 0.0f : t, isnan(h) ? 0.0f : h);
     }
     return;
   }
@@ -279,10 +364,15 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
     }
     if (doc.containsKey("control_mode")) {
       String cm = doc["control_mode"] | "auto";
+      bool wasManual = isManualMode;
       isManualMode = (cm == "manual");
       if (!isManualMode) {
+        // [FIX #2] Reset semua flag override manual saat beralih ke AUTO
         manualLampOverride = false;
         manualFanOverride  = false;
+        if (wasManual) {
+          Serial.println("[FIX] Reset manualLampOverride & manualFanOverride → AUTO mode aktif.");
+        }
       }
       updated = true;
     }
@@ -296,35 +386,38 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
 }
 
 // ============================================================
-// MQTT: Reconnect jika koneksi terputus
+// MQTT: Non-blocking reconnect
+// Dipanggil di loop(); TIDAK menggunakan delay() sama sekali.
 // ============================================================
-void reconnect() {
-  int retries = 0;
-  while (!client.connected()) {
-    Serial.print("[MQTT] Menghubungkan ke broker...");
-    String clientId = "ChickenCoop-Node2-" + String(random(0xFFFF), HEX);
+void handleMqttReconnect() {
+  unsigned long now = millis();
+  if (now - lastReconnectAttemptMs < RECONNECT_INTERVAL) return;
+  lastReconnectAttemptMs = now;
 
-    bool connected = (strlen(mqtt_user) > 0)
-      ? client.connect(clientId.c_str(), mqtt_user, mqtt_pass)
-      : client.connect(clientId.c_str());
+  if (reconnectRetries >= MAX_RECONNECT_RETRIES) {
+    Serial.println("[MQTT] Terlalu banyak kegagalan, restart ESP...");
+    ESP.restart();
+  }
 
-    if (connected) {
-      Serial.println(" Terhubung! ✓");
-      // Subscribe topik kontrol lampu, kipas, dan settings
-      client.subscribe("chickencoop/device/lamp");
-      client.subscribe("chickencoop/device/fan");
-      client.subscribe("chickencoop/device/control");
-      client.subscribe("chickencoop/config/settings");
-      Serial.println("[MQTT] Subscribe: device/lamp | device/fan | device/control | config/settings");
-    } else {
-      Serial.printf(" Gagal (rc=%d). Retry %d/5...\n", client.state(), retries + 1);
-      retries++;
-      delay(5000);
-      if (retries >= 5) {
-        Serial.println("[MQTT] Terlalu banyak kegagalan, restart ESP...");
-        ESP.restart();
-      }
-    }
+  Serial.printf("[MQTT] Mencoba reconnect (#%d)...", reconnectRetries + 1);
+  String clientId = "ChickenCoop-Node2-" + String(random(0xFFFF), HEX);
+
+  bool connected = (strlen(mqtt_user) > 0)
+    ? client.connect(clientId.c_str(), mqtt_user, mqtt_pass)
+    : client.connect(clientId.c_str());
+
+  if (connected) {
+    reconnectRetries = 0;
+    Serial.println(" Terhubung! ✓");
+    client.subscribe("chickencoop/device/lamp");
+    client.subscribe("chickencoop/device/fan");
+    client.subscribe("chickencoop/device/control");
+    client.subscribe("chickencoop/config/settings");
+    Serial.println("[MQTT] Subscribe: device/lamp | device/fan | device/control | config/settings");
+  } else {
+    reconnectRetries++;
+    Serial.printf(" Gagal (rc=%d). Retry dalam %lds...\n",
+      client.state(), RECONNECT_INTERVAL / 1000);
   }
 }
 
@@ -336,68 +429,73 @@ void controlTemperature() {
   float hum  = dht.readHumidity();
 
   // ----------------------------------------------------------
-  // PENANGANAN SENSOR RUSAK / GAAL DIBACA
+  // PENANGANAN SENSOR ERROR — Debounce 3 kegagalan berturut
   // ----------------------------------------------------------
   if (isnan(temp) || isnan(hum)) {
-    sensorError = true;
-    Serial.println("[ERROR] Sensor DHT22 gagal dibaca / rusak!");
-    
-    // Bunyikan buzzer alarm pendek untuk pemberitahuan hardware error
-    buzzerBeep(2, 80);
+    sensorFailCount++;
+    Serial.printf("[WARN] DHT22 gagal dibaca (%d/%d).\n",
+      sensorFailCount, SENSOR_FAIL_THRESHOLD);
 
-    // KETIKA SENSOR RUSAK: Otomatis masuk mode MANUAL untuk keamanan.
-    // Lampu & kipas bisa dikontrol secara manual lewat tombol website!
-    Serial.println("[SAFETY] Sensor Error → Mode dikunci ke MANUAL.");
-    Serial.printf("[STATUS] Lampu: %s | Kipas: %s (Kontrol Manual Website)\n",
-      lampState ? "ON" : "OFF", fanState ? "ON" : "OFF");
-
-    // Tetap publish telemetri dengan status error agar website dapat info
-    publishTemperatureTelemetry(NAN, NAN);
+    if (sensorFailCount >= SENSOR_FAIL_THRESHOLD) {
+      if (!sensorError) {
+        // Transisi pertama ke error state → bunyikan alarm (non-blocking)
+        sensorError = true;
+        buzzerTrigger(3, 80);
+        Serial.println("[ERROR] Sensor DHT22 rusak! Masuk mode SAFE.");
+      }
+      // Tetap publish telemetri error agar website terupdate
+      publishTemperatureTelemetry(NAN, NAN);
+    }
     return;
   }
 
-  // Jika sensor dibaca dengan sukses
-  sensorError = false;
+  // Sensor OK: reset debounce & error flag
+  sensorFailCount = 0;
+  if (sensorError) {
+    sensorError = false;
+    Serial.println("[OK] Sensor DHT22 pulih kembali.");
+  }
+
   Serial.printf("[SUHU] %.1f°C | [KELEMBABAN] %.1f%%\n", temp, hum);
 
   // ----------------------------------------------------------
-  // LOGIKA AUTO (Hanya berjalan jika mode AUTO & tanpa override)
+  // LOGIKA AUTO
+  // PERBAIKAN URUTAN:
+  //   1. Safety check konflik DULU sebelum evaluasi individu,
+  //      sehingga histeresis tidak bisa saling override.
+  //   2. Evaluasi lampu hanya jika kipas mati (dan sebaliknya).
   // ----------------------------------------------------------
   if (!isManualMode) {
-    // Evaluasi Lampu Pemanas
-    if (!manualLampOverride) {
-      if (temp < tempMin) {
-        if (!lampState) {
-          setLamp(true);
-          Serial.println("[AUTO] Suhu dingin → Lampu Pemanas ON");
-        }
-      } else if (temp >= tempMin + 1.0f) { // Histeresis 1°C agar tidak oscillating
-        if (lampState) {
-          setLamp(false);
-          Serial.println("[AUTO] Suhu cukup → Lampu Pemanas OFF");
-        }
-      }
-    }
 
-    // Evaluasi Kipas Pendingin
-    if (!manualFanOverride) {
-      if (temp > tempMax) {
-        if (!fanState) {
-          setFan(true);
-          Serial.println("[AUTO] Suhu panas → Kipas Pendingin ON");
-        }
-      } else if (temp <= tempMax - 1.0f) { // Histeresis 1°C
-        if (fanState) {
-          setFan(false);
-          Serial.println("[AUTO] Suhu normal → Kipas Pendingin OFF");
-        }
-      }
-    }
-
-    // Proteksi Keamanan: Jangan biarkan Lampu dan Kipas menyala bersamaan di mode auto
-    if (fanState && lampState) {
+    // — Langkah 1: Cegah konflik lampu + kipas nyala bersamaan —
+    // Kipas prioritas lebih tinggi (pendinginan lebih kritis)
+    if (fanState && lampState && !manualLampOverride) {
       setLamp(false);
-      Serial.println("[SAFETY] Kipas ON → Lampu dipaksa OFF");
+      Serial.println("[SAFETY] Konflik terdeteksi: Kipas ON → Lampu dipaksa OFF");
+    }
+
+    // — Langkah 2: Evaluasi Lampu Pemanas (hanya jika kipas MATI) —
+    if (!manualLampOverride && !fanState) {
+      if (temp < tempMin && !lampState) {
+        setLamp(true);
+        Serial.println("[AUTO] Suhu dingin → Lampu Pemanas ON");
+      } else if (temp >= (tempMin + 1.0f) && lampState) {
+        // Histeresis +1°C: lampu baru mati setelah suhu naik 1°C di atas tempMin
+        setLamp(false);
+        Serial.println("[AUTO] Suhu cukup → Lampu Pemanas OFF");
+      }
+    }
+
+    // — Langkah 3: Evaluasi Kipas Pendingin (hanya jika lampu MATI) —
+    if (!manualFanOverride && !lampState) {
+      if (temp > tempMax && !fanState) {
+        setFan(true);
+        Serial.println("[AUTO] Suhu panas → Kipas Pendingin ON");
+      } else if (temp <= (tempMax - 1.0f) && fanState) {
+        // Histeresis -1°C: kipas baru mati setelah suhu turun 1°C di bawah tempMax
+        setFan(false);
+        Serial.println("[AUTO] Suhu normal → Kipas Pendingin OFF");
+      }
     }
   }
 
@@ -406,7 +504,6 @@ void controlTemperature() {
     fanState  ? "ON" : "OFF",
     isManualMode ? "MANUAL" : "AUTO");
 
-  // Publish telemetri suhu ke MQTT
   publishTemperatureTelemetry(temp, hum);
 }
 
@@ -448,25 +545,31 @@ void setup() {
   // Setup MQTT
   client.setServer(mqtt_server, mqtt_port);
   client.setCallback(mqttCallback);
-  client.setKeepAlive(30);
-
-  // Sinyal buzzer 2x tanda Node #2 siap
-  buzzerBeep(2, 150);
+  client.setKeepAlive(60);
+  client.setSocketTimeout(10);
 
   Serial.println(F("=======================================================\n"));
+
+  // Sinyal ready: buzzer 2x via non-blocking (updateBuzzer() di loop)
+  buzzerTrigger(2, 150);
 }
 
 // ============================================================
 // MAIN LOOP
 // ============================================================
 void loop() {
-  // Pastikan selalu terhubung ke MQTT Broker
-  if (!client.connected()) {
-    reconnect();
-  }
-  client.loop();
+  // [1] Update buzzer non-blocking — harus paling awal
+  updateBuzzer();
 
-  // Kirim telemetri suhu & status aktuator setiap TELEMETRY_INTERVAL
+  // [2] Kelola koneksi MQTT secara non-blocking
+  if (!client.connected()) {
+    handleMqttReconnect();
+  } else {
+    reconnectRetries = 0; // reset counter jika sudah connected
+    client.loop();        // proses paket MQTT masuk/keluar
+  }
+
+  // [3] Kirim telemetri + jalankan logika kontrol setiap TELEMETRY_INTERVAL
   unsigned long now = millis();
   if (now - lastTelemetryMs >= TELEMETRY_INTERVAL) {
     lastTelemetryMs = now;

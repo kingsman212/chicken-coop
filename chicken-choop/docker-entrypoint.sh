@@ -7,40 +7,37 @@ if [ ! -f .env ]; then
     cp .env.example .env
 fi
 
+# Helper function untuk sync environment variable ke .env
+set_env_var() {
+    key="$1"
+    value="$2"
+    if [ -n "$value" ]; then
+        if grep -q "^#\? \?${key}=" .env; then
+            sed -i "s|^#\? \?${key}=.*|${key}=${value}|" .env
+        else
+            echo "${key}=${value}" >> .env
+        fi
+    fi
+}
+
 # Synchronize critical environment variables into .env
-if [ -n "$DB_HOST" ]; then
-    sed -i "s/^DB_HOST=.*/DB_HOST=$DB_HOST/" .env
-fi
-if [ -n "$DB_PORT" ]; then
-    sed -i "s/^DB_PORT=.*/DB_PORT=$DB_PORT/" .env
-fi
-if [ -n "$DB_DATABASE" ]; then
-    sed -i "s/^DB_DATABASE=.*/DB_DATABASE=$DB_DATABASE/" .env
-fi
-if [ -n "$DB_USERNAME" ]; then
-    sed -i "s/^DB_USERNAME=.*/DB_USERNAME=$DB_USERNAME/" .env
-fi
-if [ -n "$DB_PASSWORD" ]; then
-    sed -i "s/^DB_PASSWORD=.*/DB_PASSWORD=$DB_PASSWORD/" .env
-fi
-if [ -n "$DB_CONNECTION" ]; then
-    sed -i "s/^DB_CONNECTION=.*/DB_CONNECTION=$DB_CONNECTION/" .env
-fi
-if [ -n "$MQTT_HOST" ]; then
-    sed -i "s/^MQTT_HOST=.*/MQTT_HOST=$MQTT_HOST/" .env
-fi
-if [ -n "$MQTT_PORT" ]; then
-    sed -i "s/^MQTT_PORT=.*/MQTT_PORT=$MQTT_PORT/" .env
-fi
-if [ -n "$APP_ENV" ]; then
-    sed -i "s/^APP_ENV=.*/APP_ENV=$APP_ENV/" .env
-fi
-if [ -n "$APP_DEBUG" ]; then
-    sed -i "s/^APP_DEBUG=.*/APP_DEBUG=$APP_DEBUG/" .env
-fi
-if [ -n "$APP_URL" ]; then
-    sed -i "s|^APP_URL=.*|APP_URL=$APP_URL|" .env
-fi
+set_env_var "APP_NAME" "$APP_NAME"
+set_env_var "APP_ENV" "$APP_ENV"
+set_env_var "APP_DEBUG" "$APP_DEBUG"
+set_env_var "APP_URL" "$APP_URL"
+set_env_var "DB_CONNECTION" "$DB_CONNECTION"
+set_env_var "DB_HOST" "$DB_HOST"
+set_env_var "DB_PORT" "$DB_PORT"
+set_env_var "DB_DATABASE" "$DB_DATABASE"
+set_env_var "DB_USERNAME" "$DB_USERNAME"
+set_env_var "DB_PASSWORD" "$DB_PASSWORD"
+set_env_var "MQTT_HOST" "$MQTT_HOST"
+set_env_var "MQTT_PORT" "$MQTT_PORT"
+set_env_var "MQTT_USERNAME" "$MQTT_USERNAME"
+set_env_var "MQTT_PASSWORD" "$MQTT_PASSWORD"
+set_env_var "SESSION_DRIVER" "$SESSION_DRIVER"
+set_env_var "CACHE_STORE" "$CACHE_STORE"
+set_env_var "QUEUE_CONNECTION" "$QUEUE_CONNECTION"
 
 # Ensure APP_KEY exists
 if ! grep -q "^APP_KEY=base64:" .env; then
@@ -85,9 +82,9 @@ echo "Database connected successfully!"
 echo "Running database migrations..."
 php artisan migrate --force
 
-# Seeding: hanya jalankan jika belum ada data (mencegah duplikasi saat restart)
-USER_COUNT=$(php artisan db:query --query="SELECT COUNT(*) as c FROM users" 2>/dev/null | grep -oP '\d+' | tail -1 || echo "0")
-if [ "$USER_COUNT" = "0" ]; then
+# Seeding: hanya jalankan jika belum ada data user (mencegah duplikasi saat restart)
+USER_COUNT=$(php artisan tinker --execute="echo \App\Models\User::count();" 2>/dev/null | tr -dc '0-9' || echo "0")
+if [ "$USER_COUNT" = "0" ] || [ -z "$USER_COUNT" ]; then
     echo "Seeding database (first time setup)..."
     php artisan db:seed --force
 else

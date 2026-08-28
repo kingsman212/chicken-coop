@@ -14,10 +14,10 @@ class MqttListenCommand extends Command
 
     public function handle(MqttService $mqttService)
     {
-        $host = env('MQTT_HOST', '127.0.0.1');
-        $port = (int) env('MQTT_PORT', 1883);
-        $username = env('MQTT_USERNAME');
-        $password = env('MQTT_PASSWORD');
+        $host = config('mqtt.host', 'mosquitto');
+        $port = (int) config('mqtt.port', 1883);
+        $username = config('mqtt.username');
+        $password = config('mqtt.password');
         $clientId = 'laravel_sub_' . uniqid();
 
         $this->info("Connecting to MQTT Broker {$host}:{$port}...");

@@ -22,11 +22,11 @@ class MqttService
 
     public function __construct()
     {
-        $this->host = env('MQTT_HOST', '192.168.1.9');
-        $this->port = (int) env('MQTT_PORT', 1883);
+        $this->host = config('mqtt.host', 'mosquitto');
+        $this->port = (int) config('mqtt.port', 1883);
         $this->clientId = 'laravel_chicken_coop_' . uniqid();
-        $this->username = env('MQTT_USERNAME');
-        $this->password = env('MQTT_PASSWORD');
+        $this->username = config('mqtt.username');
+        $this->password = config('mqtt.password');
     }
 
     /**
@@ -73,7 +73,7 @@ class MqttService
         $calculatedFan = 'OFF';
         $tempStatus = 'Normal';
 
-        // Auto logic evaluation
+        // Auto logic evaluation (untuk keperluan log & emergency saja)
         if ($temperature > $settings->temp_max) {
             $calculatedFan = 'ON';
             $calculatedLamp = 'OFF';
@@ -88,46 +88,50 @@ class MqttService
             $tempStatus = 'Normal';
         }
 
-        // Apply Manual Override if set or mode is manual
-        if ($settings->control_mode === 'manual' || $settings->lamp_manual_override !== 'AUTO') {
-            if ($settings->lamp_manual_override !== 'AUTO') {
-                $calculatedLamp = $settings->lamp_manual_override;
-            }
+        // Apply Manual Override jika ada — untuk keperluan tampilan di web
+        if ($settings->lamp_manual_override !== 'AUTO') {
+            $calculatedLamp = $settings->lamp_manual_override;
         }
-        if ($settings->control_mode === 'manual' || $settings->fan_manual_override !== 'AUTO') {
-            if ($settings->fan_manual_override !== 'AUTO') {
-                $calculatedFan = $settings->fan_manual_override;
-            }
+        if ($settings->fan_manual_override !== 'AUTO') {
+            $calculatedFan = $settings->fan_manual_override;
         }
 
+        // Gunakan status yang dilaporkan firmware sebagai sumber kebenaran (Opsi A)
+        // Firmware adalah master kontrol; server hanya menerima dan mencatat.
         $lampFinal = $lampStatus ?? $calculatedLamp;
         $fanFinal  = $fanStatus  ?? $calculatedFan;
 
+        // ── [IMPROVEMENT] Simpan data realtime ke Cache (TTL 30 detik) ────────
+        // Ini memastikan /api/state selalu mengembalikan data terbaru
+        // bahkan saat tidak ada perubahan status (DB tidak selalu diupdate).
+        \Illuminate\Support\Facades\Cache::put('last_temperature', [
+            'temperature' => $temperature,
+            'status'      => $tempStatus,
+            'lamp_status' => $lampFinal,
+            'fan_status'  => $fanFinal,
+            'recorded_at' => now()->toIso8601String(),
+        ], 30);
+        // ─────────────────────────────────────────────────────────────────────
+
         // ── Event-Based DB Write ───────────────────────────────────────────
-        // Ambil log suhu terakhir dari database
         $lastLog = TemperatureLog::latest('recorded_at')->first();
 
         $shouldSave = false;
         $saveReason = '';
 
         if (!$lastLog) {
-            // Belum ada data sama sekali → simpan pertama kali
             $shouldSave = true;
             $saveReason = 'initial';
         } elseif ($tempStatus !== $lastLog->status) {
-            // Status suhu berubah (Normal ↔ Terlalu panas/dingin ↔ Emergency)
             $shouldSave = true;
             $saveReason = "status_change: {$lastLog->status} → {$tempStatus}";
         } elseif ($lampFinal !== $lastLog->lamp_status) {
-            // Status lampu berubah (ON ↔ OFF)
             $shouldSave = true;
             $saveReason = "lamp_change: {$lastLog->lamp_status} → {$lampFinal}";
         } elseif ($fanFinal !== $lastLog->fan_status) {
-            // Status kipas berubah (ON ↔ OFF)
             $shouldSave = true;
             $saveReason = "fan_change: {$lastLog->fan_status} → {$fanFinal}";
         } elseif ($lastLog->recorded_at->diffInMinutes(now()) >= 30) {
-            // Snapshot periodik setiap 30 menit (untuk grafik historis)
             $shouldSave = true;
             $saveReason = 'periodic_snapshot_30min';
         }
@@ -148,17 +152,15 @@ class MqttService
         // Emergency Monitoring logic (selalu dievaluasi setiap telemetri)
         $this->evaluateEmergency($temperature, $settings, $lampFinal, $fanFinal);
 
-        // Publish Actuator Status ke firmware (selalu, untuk kontrol real-time)
-        $this->publish('chickencoop/device/lamp', [
-            'status'    => $lampFinal,
-            'mode'      => $settings->control_mode,
-            'timestamp' => now()->toIso8601String()
-        ]);
-        $this->publish('chickencoop/device/fan', [
-            'status'    => $fanFinal,
-            'mode'      => $settings->control_mode,
-            'timestamp' => now()->toIso8601String()
-        ]);
+        // ── [FIX #1] HAPUS publish relay ke firmware dari sini ─────────────
+        // Sebelumnya: server publish device/lamp & device/fan setiap telemetri
+        // datang → menyebabkan mode manual di firmware terus di-override.
+        //
+        // Dengan Opsi A (firmware sebagai master kontrol):
+        //   - Server HANYA publish ke relay saat user EKSPLISIT klik tombol
+        //     (sudah ditangani di ActuatorController)
+        //   - Server TIDAK boleh publish relay secara otomatis saat telemetri masuk
+        // ─────────────────────────────────────────────────────────────────────
 
         return [
             'temperature' => $temperature,
@@ -261,8 +263,17 @@ class MqttService
             $stateDesc = ($waterStatus === 'Normal') ? 'Pompa Air: OFF – Air Normal' : "Pompa Air: OFF – Air {$waterStatus}";
         }
 
+        // ── [IMPROVEMENT] Simpan data realtime ke Cache (TTL 30 detik) ────────
+        \Illuminate\Support\Facades\Cache::put('last_water', [
+            'water_level'  => $waterLevel,
+            'water_status' => $waterStatus,
+            'pump_status'  => $pumpFinal,
+            'state_desc'   => $stateDesc,
+            'recorded_at'  => now()->toIso8601String(),
+        ], 30);
+        // ─────────────────────────────────────────────────────────────────────
+
         // ── Event-Based DB Write ───────────────────────────────────────────
-        // Ambil log air terakhir dari database
         $lastLog = WaterPumpLog::latest('recorded_at')->first();
 
         $shouldSave = false;

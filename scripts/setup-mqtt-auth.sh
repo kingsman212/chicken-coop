@@ -1,4 +1,4 @@
-﻿#!/bin/bash
+#!/bin/bash
 # ============================================================
 # SmartCoop — Setup MQTT Authentication
 # Jalankan script ini SEKALI setelah pertama kali deploy
@@ -29,11 +29,28 @@ docker exec chicken_coop_mosquitto mosquitto_passwd -c -b /mosquitto/config/pass
 docker exec chicken_coop_mosquitto mosquitto_passwd -b /mosquitto/config/passwd \
     "$MQTT_USER_ESP" "$MQTT_PASS_ESP"
 
-echo "Reload konfigurasi Mosquitto..."
-docker exec chicken_coop_mosquitto kill -HUP 1
+echo "Mengaktifkan proteksi password di mosquitto.conf..."
+cat << 'EOF' > "$CONF_DIR/mosquitto.conf"
+# ── Listener MQTT ──────────────────────────────────────────────
+listener 1883 0.0.0.0
+
+# ── Akses MQTT (Password Protected) ───────────────────────────
+allow_anonymous false
+password_file /mosquitto/config/passwd
+
+# ── Logging ────────────────────────────────────────────────────
+log_dest file /mosquitto/log/mosquitto.log
+log_type error
+log_type warning
+log_type notice
+EOF
+
+echo "Restart container Mosquitto..."
+docker restart chicken_coop_mosquitto
+docker restart chicken_coop_mqtt_worker
 
 echo ""
-echo "✅ MQTT Authentication berhasil dikonfigurasi!"
+echo "✅ MQTT Authentication berhasil dikonfigurasi dan aktif!"
 echo "   User Laravel Worker : $MQTT_USER_WORKER"
 echo "   User ESP Device     : $MQTT_USER_ESP"
 echo ""

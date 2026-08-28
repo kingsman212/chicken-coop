@@ -1,4 +1,30 @@
-#include <Arduino.h>
+/**
+ * ============================================================
+ *  CHICKEN COOP IoT — NodeMCU ESP8266 #1
+ *  Modul: Kontrol Pakan & Air Minum
+ *  Komunikasi: MQTT (Eclipse Mosquitto — AWS EC2)
+ * ============================================================
+ *
+ *  PINOUT HARDWARE:
+ *    D1 → RTC DS3231 SCL
+ *    D2 → RTC DS3231 SDA
+ *    D0 → Servo Hopper Pakan
+ *    D6 → Servo Pipa Distribusi
+ *    D7 → Trigger Ultrasonik HC-SR04
+ *    D5 → Echo Ultrasonik HC-SR04
+ *    D3 → Relay Pompa Air
+ *    D4 → Buzzer
+ *
+ *  CHANGELOG PERBAIKAN:
+ *    [FIX] reconnect() blocking diganti handleMqttReconnect() non-blocking
+ *          → loop() tidak pernah freeze, jadwal pakan tidak terlewat
+ *    [FIX] Buzzer non-blocking: setBuzzer()+delay() diganti buzzerTrigger()
+ *          → controlWater() tidak blocking selama 200–300ms
+ *    [FIX] Publish telemetri air segera saat pompa berubah state
+ *    [FIX] setKeepAlive(60) + setSocketTimeout(10) untuk koneksi MQTT stabil
+ *    [FIX] updateBuzzer() dipanggil pertama di setiap loop() iterasi
+ * ============================================================
+ */
 #include <Wire.h>
 #include <RTClib.h>
 #include <Servo.h>
@@ -23,9 +49,9 @@
 // ============================================================
 const char* ssid        = "Dikajarazaki";
 const char* password    = "Apasandinya?";
-const char* mqtt_server = "192.168.1.4"; // IP komputer yang menjalankan Mosquitto Broker
+const char* mqtt_server = "23.21.15.160"; // IP komputer yang menjalankan Mosquitto Broker
 const int   mqtt_port   = 1883;
-const char* mqtt_user   = "esp_device";  // Username MQTT (kosongkan jika tanpa auth)
+const char* mqtt_user   = "laravel_worker";  // Username MQTT (kosongkan jika tanpa auth)
 const char* mqtt_pass   = "rezatugasakhir09";// Password MQTT (sesuai setup-mqtt-auth.sh)
 
 WiFiClient   espClient;
@@ -40,12 +66,15 @@ Servo      servoPipe;
 #define HOPPER_CLOSE      0
 #define HOPPER_OPEN       70
 #define PIPE_NORMAL       0
-#define PIPE_TILT         55
+#define PIPE_TILT         60
 
 // ============================================================
-// DIMENSI WADAH AIR
+// KALIBRASI SENSOR ULTRASONIK — WADAH BAMBU AIR MINUM
+// Ukur jarak sensor saat wadah KOSONG dan saat wadah PENUH,
+// lalu masukkan nilainya di bawah ini.
 // ============================================================
-#define WATER_CONTAINER_HEIGHT  20.0f  // Tinggi total wadah (cm)
+#define DISTANCE_EMPTY  4.0f   // Jarak sensor → permukaan air saat wadah KOSONG (cm)
+#define DISTANCE_FULL   3.0f   // Jarak sensor → permukaan air saat wadah PENUH  (cm)
 
 // ============================================================
 // THRESHOLD — Dapat diperbarui dari website via MQTT
@@ -87,7 +116,25 @@ int  lastFeedMinute = -1;
 int  lastFeedId     = -1;
 
 unsigned long lastTelemetryMs    = 0;
-const long    TELEMETRY_INTERVAL = 5000; // Kirim telemetri setiap 5 detik
+const long    TELEMETRY_INTERVAL = 3000; // 3 detik → lebih responsif di website
+
+// --- Non-blocking buzzer ---
+bool          buzzerActive       = false;
+unsigned long buzzerOnUntilMs    = 0;
+unsigned long buzzerPauseUntilMs = 0;
+int           buzzerBeepsLeft    = 0;
+int           buzzerOnDurationMs = 100;
+
+// --- Non-blocking MQTT reconnect ---
+unsigned long lastReconnectAttemptMs = 0;
+const long    RECONNECT_INTERVAL     = 5000;
+int           reconnectRetries       = 0;
+const int     MAX_RECONNECT_RETRIES  = 10;
+
+// --- Debounce sensor ultrasonik ---
+uint8_t       ultrasonicFailCount      = 0;
+const uint8_t ULTRASONIC_FAIL_THRESHOLD = 3;
+
 
 // ============================================================
 // FORWARD DECLARATIONS
@@ -106,6 +153,46 @@ void setPump(bool state) {
 
 void setBuzzer(bool state) {
   digitalWrite(BUZZER_PIN, state ? HIGH : LOW);
+}
+
+/**
+ * Mulai urutan beep non-blocking.
+ * Panggil sekali; updateBuzzer() di loop() yang menyelesaikannya.
+ */
+void buzzerTrigger(int count, int durationMs = 100) {
+  if (count <= 0) return;
+  buzzerBeepsLeft    = count;
+  buzzerOnDurationMs = durationMs;
+  buzzerActive       = true;
+  buzzerPauseUntilMs = 0;
+  setBuzzer(true);
+  buzzerOnUntilMs    = millis() + durationMs;
+}
+
+/**
+ * Harus dipanggil di setiap iterasi loop().
+ * Mengelola on/off buzzer tanpa delay().
+ */
+void updateBuzzer() {
+  if (!buzzerActive) return;
+  unsigned long now = millis();
+
+  if (buzzerOnUntilMs > 0 && now >= buzzerOnUntilMs) {
+    setBuzzer(false);
+    buzzerOnUntilMs = 0;
+    buzzerBeepsLeft--;
+    if (buzzerBeepsLeft > 0) {
+      buzzerPauseUntilMs = now + 100; // jeda 100ms antar beep
+    } else {
+      buzzerActive = false;
+    }
+  }
+
+  if (buzzerPauseUntilMs > 0 && now >= buzzerPauseUntilMs) {
+    buzzerPauseUntilMs = 0;
+    setBuzzer(true);
+    buzzerOnUntilMs = now + buzzerOnDurationMs;
+  }
 }
 
 // ============================================================
@@ -351,41 +438,45 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
 }
 
 // ============================================================
-// MQTT: Reconnect jika koneksi terputus
+// MQTT: Non-blocking reconnect — tidak memblokir loop()
+// Dipanggil di loop(); TIDAK menggunakan delay() sama sekali.
 // ============================================================
-void reconnect() {
-  int retries = 0;
-  while (!client.connected()) {
-    Serial.print("[MQTT] Menghubungkan...");
-    String clientId = "ChickenCoopClient-" + String(random(0xFFFF), HEX);
+void handleMqttReconnect() {
+  unsigned long now = millis();
+  if (now - lastReconnectAttemptMs < RECONNECT_INTERVAL) return;
+  lastReconnectAttemptMs = now;
 
-    bool connected = (strlen(mqtt_user) > 0)
-      ? client.connect(clientId.c_str(), mqtt_user, mqtt_pass)
-      : client.connect(clientId.c_str());
+  if (reconnectRetries >= MAX_RECONNECT_RETRIES) {
+    Serial.println("[MQTT] Terlalu banyak kegagalan, restart ESP...");
+    ESP.restart();
+  }
 
-    if (connected) {
-      Serial.println(" Terhubung! ✓");
+  Serial.printf("[MQTT] Mencoba reconnect (#%d)...", reconnectRetries + 1);
+  String clientId = "ChickenCoopFeed-" + String(random(0xFFFF), HEX);
 
-      // Subscribe ke topik kontrol & sinkronisasi
-      client.subscribe("chickencoop/device/control");
-      client.subscribe("chickencoop/config/settings");
-      client.subscribe("chickencoop/feed/schedule");
-      client.subscribe("chickencoop/feed/schedules/sync");
-      client.subscribe("chickencoop/rtc/sync");
+  bool connected = (strlen(mqtt_user) > 0)
+    ? client.connect(clientId.c_str(), mqtt_user, mqtt_pass)
+    : client.connect(clientId.c_str());
 
-      Serial.println("[MQTT] Berlangganan topik kontrol, jadwal pakan & sinkronisasi RTC.");
+  if (connected) {
+    reconnectRetries = 0;
+    Serial.println(" Terhubung! ✓");
 
-      // Minta website mengirimkan jadwal & jam server terkini
-      mqttPublish("chickencoop/feed/request_sync", "{\"request\":\"sync_schedules\"}");
-    } else {
-      Serial.printf(" Gagal (rc=%d). Coba lagi dalam 5 detik...\n", client.state());
-      retries++;
-      delay(5000);
-      if (retries >= 5) {
-        Serial.println("[MQTT] Terlalu banyak kegagalan, restart ESP...");
-        ESP.restart();
-      }
-    }
+    // Subscribe ke topik kontrol & sinkronisasi
+    client.subscribe("chickencoop/device/control");
+    client.subscribe("chickencoop/config/settings");
+    client.subscribe("chickencoop/feed/schedule");
+    client.subscribe("chickencoop/feed/schedules/sync");
+    client.subscribe("chickencoop/rtc/sync");
+
+    Serial.println("[MQTT] Berlangganan topik kontrol, jadwal pakan & sinkronisasi RTC.");
+
+    // Minta website mengirimkan jadwal & jam server terkini
+    mqttPublish("chickencoop/feed/request_sync", "{\"request\":\"sync_schedules\"}");
+  } else {
+    reconnectRetries++;
+    Serial.printf(" Gagal (rc=%d). Retry dalam %lds...\n",
+      client.state(), RECONNECT_INTERVAL / 1000);
   }
 }
 
@@ -439,33 +530,36 @@ void controlWater() {
 
   if (distance < 0) {
     Serial.println("[ERROR] Sensor ultrasonik gagal dibaca!");
-    setBuzzer(true);
-    delay(200);
-    setBuzzer(false);
+    buzzerTrigger(1, 200); // [FIX] non-blocking, ganti delay(200)
     publishWaterTelemetry(0.0f);
     return;
   }
 
-  float waterLevel = WATER_CONTAINER_HEIGHT - distance;
-  if (waterLevel < 0)                      waterLevel = 0;
-  if (waterLevel > WATER_CONTAINER_HEIGHT) waterLevel = WATER_CONTAINER_HEIGHT;
+  // Hitung persentase air berdasarkan kalibrasi dua titik:
+  //   distance == DISTANCE_EMPTY  →  0%  (wadah kosong)
+  //   distance == DISTANCE_FULL   →  100% (wadah penuh)
+  float waterPercent = (DISTANCE_EMPTY - distance) / (DISTANCE_EMPTY - DISTANCE_FULL) * 100.0f;
+  if (waterPercent < 0.0f)   waterPercent = 0.0f;
+  if (waterPercent > 100.0f) waterPercent = 100.0f;
 
-  float waterPercent = (waterLevel / WATER_CONTAINER_HEIGHT) * 100.0f;
-
-  Serial.printf("[AIR] Jarak: %.1f cm | Level: %.1f cm (%.1f%%)\n",
-    distance, waterLevel, waterPercent);
+  Serial.printf("[AIR] Jarak: %.1f cm | Level: %.1f%%\n",
+    distance, waterPercent);
 
   // --- Logika AUTO ---
   if (!isManualMode) {
     if (waterPercent <= waterMin && !pumpState) {
       setPump(true);
-      setBuzzer(true);
-      delay(300);
-      setBuzzer(false);
+      buzzerTrigger(1, 300); // [FIX] non-blocking, ganti delay(300)
       Serial.println("[AUTO] Air rendah → Pompa ON");
+      // [IMPROVEMENT] Publish segera saat pompa berubah
+      publishWaterTelemetry(waterPercent);
+      return;
     } else if (waterPercent >= waterFull && pumpState) {
       setPump(false);
       Serial.println("[AUTO] Air penuh → Pompa OFF");
+      // [IMPROVEMENT] Publish segera saat pompa berubah
+      publishWaterTelemetry(waterPercent);
+      return;
     }
   }
 
@@ -598,7 +692,11 @@ void setup() {
   // ---- Setup MQTT ----
   client.setServer(mqtt_server, mqtt_port);
   client.setCallback(mqttCallback);
-  client.setKeepAlive(30);
+  client.setKeepAlive(60);      // [FIX] Tingkatkan ke 60s, konsisten dengan Node #2
+  client.setSocketTimeout(10);  // [FIX] Tambah socket timeout
+
+  // Sinyal ready: buzzer 2x via non-blocking (updateBuzzer() di loop)
+  buzzerTrigger(2, 150);
 
   Serial.println("=================================================\n");
 }
@@ -607,18 +705,24 @@ void setup() {
 // MAIN LOOP
 // ============================================================
 void loop() {
-  if (!client.connected()) {
-    reconnect();
-  }
-  client.loop();
+  // [1] Update buzzer non-blocking — harus paling awal
+  updateBuzzer();
 
-  // Kirim telemetri air setiap TELEMETRY_INTERVAL ms
+  // [2] Kelola koneksi MQTT secara non-blocking
+  if (!client.connected()) {
+    handleMqttReconnect();
+  } else {
+    reconnectRetries = 0; // reset counter jika sudah connected
+    client.loop();        // proses paket MQTT masuk/keluar
+  }
+
+  // [3] Kirim telemetri air setiap TELEMETRY_INTERVAL ms
   unsigned long now = millis();
   if (now - lastTelemetryMs >= TELEMETRY_INTERVAL) {
     lastTelemetryMs = now;
     controlWater(); // Baca ultrasonik + logika pompa + publish ke MQTT
   }
 
-  // Evaluasi jadwal pakan terhadap modul RTC DS3231
+  // [4] Evaluasi jadwal pakan terhadap modul RTC DS3231
   checkFeedingSchedule();
 }
