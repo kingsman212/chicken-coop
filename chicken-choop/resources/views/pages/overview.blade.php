@@ -144,10 +144,21 @@
                 <i class="fa-solid fa-wheat-awn"></i>
             </div>
             <div class="flex-1 min-w-0">
-                <p class="metric-label">Quick Feeding</p>
-                <button onclick="triggerManualFeed()" id="btn-quick-feed" class="mt-1 w-full btn btn-primary btn-sm">
-                    <i class="fa-solid fa-bowl-food"></i> Beri Pakan (500g)
-                </button>
+                <div class="flex items-center justify-between mb-1">
+                    <p class="metric-label">Quick Feeding</p>
+                </div>
+                <div class="flex gap-1.5 mt-1">
+                    <select id="quick-feed-portion" onchange="updateQuickFeedBtnText(this.value)" class="form-select text-xs py-1 px-2 font-mono flex-1">
+                        <option value="200">200g</option>
+                        <option value="500" selected>500g</option>
+                        <option value="1000">1000g (1 Kg)</option>
+                        <option value="1500">1500g (1.5 Kg)</option>
+                        <option value="2000">2000g (2 Kg)</option>
+                    </select>
+                    <button onclick="triggerManualFeed()" id="btn-quick-feed" class="btn btn-primary btn-sm px-3">
+                        <i class="fa-solid fa-bowl-food"></i> <span id="btn-quick-feed-text">Feed (500g)</span>
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -286,17 +297,23 @@
     setInterval(fetchRealtimeState, 4000);
 
     /* ── Quick Feed ── */
+    function updateQuickFeedBtnText(grams) {
+        document.getElementById('btn-quick-feed-text').innerText = `Feed (${grams}g)`;
+    }
+
     async function triggerManualFeed() {
+        const portionSelect = document.getElementById('quick-feed-portion');
+        const portion = portionSelect ? parseInt(portionSelect.value) : 500;
         const btn = document.getElementById('btn-quick-feed');
         btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Proses...';
         try {
             const r = await (await fetch('/api/feed/manual', {
                 method:'POST', headers:{'Content-Type':'application/json','X-CSRF-TOKEN':csrfToken},
-                body: JSON.stringify({portion_grams:500})
+                body: JSON.stringify({portion_grams: portion})
             })).json();
-            if (r.success) { pushNotification('Pakan Manual', 'Porsi 500g telah diberikan.', 'info'); fetchRealtimeState(); }
+            if (r.success) { pushNotification('Pakan Manual', `Porsi ${portion}g telah dikirim ke alat.`, 'info'); fetchRealtimeState(); }
         } catch(e) { console.error(e); }
-        btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-bowl-food"></i> Beri Pakan (500g)';
+        btn.disabled = false; btn.innerHTML = `<i class="fa-solid fa-bowl-food"></i> <span id="btn-quick-feed-text">Feed (${portion}g)</span>`;
     }
 </script>
 @endpush

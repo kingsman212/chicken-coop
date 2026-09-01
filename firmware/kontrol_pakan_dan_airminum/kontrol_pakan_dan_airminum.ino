@@ -77,6 +77,15 @@ Servo      servoPipe;
 #define DISTANCE_FULL   3.0f   // Jarak sensor → permukaan air saat wadah PENUH  (cm)
 
 // ============================================================
+// KALIBRASI LAJU ALIR (FLOW RATE) PAKAN HOPPER
+// Tentukan berapa gram pakan yang keluar per detik saat hopper terbuka penuh (HOPPER_OPEN).
+// Rumus: FLOW_RATE = Gram yang keluar / Waktu buka (detik).
+// Contoh: Dalam 5 detik keluar 250 gram -> 250 / 5 = 50.0 gram/detik.
+// ============================================================
+const float FEED_FLOW_RATE_GRAMS_PER_SEC = 50.0f; // gram/detik (Sesuaikan dengan hasil timbangan Anda)
+const unsigned long SERVO_MOTION_OFFSET_MS = 100; // Kompensasi waktu mekanis buka/tutup servo (ms)
+
+// ============================================================
 // THRESHOLD — Dapat diperbarui dari website via MQTT
 // ============================================================
 float waterMin  = 25.0f;  // % level air minimum sebelum pompa ON  (default: 25%)
@@ -139,6 +148,7 @@ const uint8_t ULTRASONIC_FAIL_THRESHOLD = 3;
 // ============================================================
 // FORWARD DECLARATIONS
 // ============================================================
+unsigned long calculateFeedDuration(int portionGrams);
 void feedChicken(bool isManual, int portionGrams = 500, int scheduleId = 0, const char* label = "Manual");
 void publishWaterTelemetry(float waterPercent);
 void syncRtcTime(int year, int month, int day, int hour, int minute, int second);
@@ -571,10 +581,25 @@ void controlWater() {
 }
 
 // ============================================================
+// PAKAN: Hitung Durasi Hopper Terbuka Berdasarkan Target Gram
+// Rumus: (Target Gram / Flow Rate) * 1000 ms + Motion Offset
+// ============================================================
+unsigned long calculateFeedDuration(int portionGrams) {
+  if (portionGrams <= 0) return 0;
+  unsigned long duration = (unsigned long)(((float)portionGrams / FEED_FLOW_RATE_GRAMS_PER_SEC) * 1000.0f);
+  return duration + SERVO_MOTION_OFFSET_MS;
+}
+
+// ============================================================
 // PAKAN: Gerakkan Servo Sesuai Porsi + Lapor ke Website via MQTT
 // ============================================================
 void feedChicken(bool isManual, int portionGrams, int scheduleId, const char* label) {
+  // Hitung durasi pembukaan servo hopper pakan berdasarkan porsi (gram)
+  unsigned long openDuration = calculateFeedDuration(portionGrams);
+  
   Serial.printf("[PAKAN] Memulai pakan: %s (%d gram)...\n", label, portionGrams);
+  Serial.printf("[PAKAN] Laju Alir: %.1f g/s | Durasi Hopper Terbuka: %lu ms\n", 
+                FEED_FLOW_RATE_GRAMS_PER_SEC, openDuration);
 
   // Bunyikan buzzer sebagai sinyal
   setBuzzer(true);
@@ -585,15 +610,12 @@ void feedChicken(bool isManual, int portionGrams, int scheduleId, const char* la
   servoPipe.write(PIPE_TILT);
   delay(1000);
 
-  // 2. Hitung durasi pembukaan servo hopper pakan berdasarkan porsi (misal 50g-3000g -> 1s-6s)
-  int openDuration = map(constrain(portionGrams, 50, 3000), 50, 3000, 1000, 6000);
-  Serial.printf("[SERVO] Membuka Hopper selama %d ms...\n", openDuration);
-
+  // 2. Buka servo hopper pakan selama durasi kalkulasi gram
   servoHopper.write(HOPPER_OPEN);
   delay(openDuration);
   servoHopper.write(HOPPER_CLOSE);
 
-  // 3. Kembalikan servo pipa ke posisi normal
+  // 3. Kembalikan servo pipa ke posisi normal setelah pakan selesai turun
   delay(800);
   servoPipe.write(PIPE_NORMAL);
 

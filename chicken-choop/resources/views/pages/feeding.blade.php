@@ -36,15 +36,27 @@
 
         <!-- Manual Feed Form -->
         <div class="card p-5 sm:col-span-2 lg:col-span-1">
-            <div class="flex items-center gap-2.5 mb-2">
-                <div class="icon-box bg-emerald-50 text-emerald-600">
-                    <i class="fa-solid fa-hand-holding-hand"></i>
+            <div class="flex items-center justify-between mb-2">
+                <div class="flex items-center gap-2.5">
+                    <div class="icon-box bg-emerald-50 text-emerald-600">
+                        <i class="fa-solid fa-hand-holding-hand"></i>
+                    </div>
+                    <span class="metric-label">Feed Manual Now</span>
                 </div>
-                <span class="metric-label">Feed Manual Now</span>
             </div>
-            <div class="flex gap-2 mt-3">
+            
+            <!-- Quick Preset Badges -->
+            <div class="flex flex-wrap gap-1.5 my-2">
+                <button type="button" onclick="setFeedPortion(200)" class="preset-btn px-2 py-1 text-[11px] font-mono rounded bg-slate-100 hover:bg-emerald-100 text-slate-700 hover:text-emerald-700 border border-slate-200 transition">200g</button>
+                <button type="button" onclick="setFeedPortion(500)" class="preset-btn px-2 py-1 text-[11px] font-mono rounded bg-emerald-50 text-emerald-700 font-bold border border-emerald-300 transition">500g</button>
+                <button type="button" onclick="setFeedPortion(1000)" class="preset-btn px-2 py-1 text-[11px] font-mono rounded bg-slate-100 hover:bg-emerald-100 text-slate-700 hover:text-emerald-700 border border-slate-200 transition">1000g</button>
+                <button type="button" onclick="setFeedPortion(1500)" class="preset-btn px-2 py-1 text-[11px] font-mono rounded bg-slate-100 hover:bg-emerald-100 text-slate-700 hover:text-emerald-700 border border-slate-200 transition">1500g</button>
+                <button type="button" onclick="setFeedPortion(2000)" class="preset-btn px-2 py-1 text-[11px] font-mono rounded bg-slate-100 hover:bg-emerald-100 text-slate-700 hover:text-emerald-700 border border-slate-200 transition">2000g</button>
+            </div>
+
+            <div class="flex gap-2 mt-2">
                 <div class="relative flex-1">
-                    <input type="number" id="feed-gram" value="500" min="50" max="2000" class="form-input text-xs font-mono pr-7">
+                    <input type="number" id="feed-gram" value="500" min="50" max="5000" step="50" class="form-input text-xs font-mono pr-7">
                     <span class="absolute right-2.5 top-2 text-[10px] text-slate-400 font-semibold">g</span>
                 </div>
                 <button onclick="triggerManualFeed()" id="btn-feed" class="btn btn-primary btn-sm px-4">
@@ -87,8 +99,16 @@
                     <input type="text" name="label" placeholder="Contoh: Makan Pagi" required class="form-input text-xs">
                 </div>
                 <div>
-                    <label class="text-[10px] font-semibold text-slate-500 uppercase block mb-1">Porsi (Gram)</label>
-                    <input type="number" name="portion_grams" value="500" min="50" max="5000" class="form-input text-xs font-mono">
+                    <label class="text-[10px] font-semibold text-slate-500 uppercase block mb-1">Porsi Pakan</label>
+                    <select id="sched-portion-preset" onchange="handleSchedulePortionPreset(this)" class="form-select text-xs mb-1 font-mono">
+                        <option value="200">200 Gram</option>
+                        <option value="500" selected>500 Gram</option>
+                        <option value="1000">1000 Gram (1 Kg)</option>
+                        <option value="1500">1500 Gram (1.5 Kg)</option>
+                        <option value="2000">2000 Gram (2 Kg)</option>
+                        <option value="custom">Kustom (Gram)...</option>
+                    </select>
+                    <input type="number" id="sched-portion-custom" name="portion_grams" value="500" min="50" max="5000" step="50" class="form-input text-xs font-mono hidden" placeholder="Masukkan jumlah gram">
                 </div>
                 <div class="flex items-end">
                     <button type="submit" class="btn btn-primary btn-sm w-full">
@@ -185,9 +205,35 @@
 
 @push('scripts')
 <script>
+    function setFeedPortion(grams) {
+        document.getElementById('feed-gram').value = grams;
+        document.querySelectorAll('.preset-btn').forEach(btn => {
+            if (btn.innerText.trim() === grams + 'g') {
+                btn.className = 'preset-btn px-2 py-1 text-[11px] font-mono rounded bg-emerald-50 text-emerald-700 font-bold border border-emerald-300 transition';
+            } else {
+                btn.className = 'preset-btn px-2 py-1 text-[11px] font-mono rounded bg-slate-100 hover:bg-emerald-100 text-slate-700 hover:text-emerald-700 border border-slate-200 transition';
+            }
+        });
+    }
+
+    function handleSchedulePortionPreset(selectEl) {
+        const customInput = document.getElementById('sched-portion-custom');
+        if (selectEl.value === 'custom') {
+            customInput.classList.remove('hidden');
+            customInput.focus();
+        } else {
+            customInput.classList.add('hidden');
+            customInput.value = selectEl.value;
+        }
+    }
+
     document.getElementById('form-add-sched').addEventListener('submit', async e => {
         e.preventDefault();
         const fd = new FormData(e.target);
+        const presetVal = document.getElementById('sched-portion-preset').value;
+        if (presetVal !== 'custom') {
+            fd.set('portion_grams', presetVal);
+        }
         try {
             const r = await (await fetch('/api/schedules', {
                 method: 'POST',

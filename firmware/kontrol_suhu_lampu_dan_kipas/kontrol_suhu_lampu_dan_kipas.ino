@@ -59,7 +59,7 @@
 // ============================================================
 const char* ssid        = "Dikajarazaki";
 const char* password    = "Apasandinya?";
-const char* mqtt_server = "192.168.1.4";
+const char* mqtt_server = "23.21.15.160";
 const int   mqtt_port   = 1883;
 const char* mqtt_user   = "laravel_worker";
 const char* mqtt_pass   = "rezatugasakhir09";
