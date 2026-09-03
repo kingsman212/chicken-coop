@@ -126,14 +126,17 @@ services:
     image: sapcc/mosquitto-exporter:latest
     container_name: chicken_coop_mosquitto_exporter
     restart: unless-stopped
-    command:
-      - '-mqtt.endpoint=tcp://mosquitto:1883'
-      - '-mqtt.user=${MQTT_USERNAME:-laravel_worker}'
-      - '-mqtt.pass=${MQTT_PASSWORD:-rezatugasakhir09}'
+    environment:
+      - BROKER_ENDPOINT=tcp://mosquitto:1883
+      - MQTT_USERNAME=${MQTT_USERNAME:-laravel_worker}
+      - MQTT_PASSWORD=${MQTT_PASSWORD:-rezatugasakhir09}
     expose:
       - "9234"
+    ports:
+      - "9234:9234"
     depends_on:
       - mosquitto
+
 
   # ── Prometheus (Metrics Time-Series Database & Scraper) ────
   prometheus:

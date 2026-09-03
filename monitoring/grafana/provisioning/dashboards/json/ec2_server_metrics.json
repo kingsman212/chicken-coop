@@ -379,7 +379,7 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "mosquitto_broker_messages_received_total",
+          "expr": "mosquitto_messages_received_total",
           "legendFormat": "Messages In",
           "refId": "A"
         }
@@ -419,7 +419,7 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "mosquitto_broker_messages_sent_total",
+          "expr": "mosquitto_messages_sent_total",
           "legendFormat": "Messages Out",
           "refId": "A"
         }
@@ -465,13 +465,13 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "rate(mosquitto_broker_messages_received_total[1m])",
+          "expr": "rate(mosquitto_messages_received_total[1m])",
           "legendFormat": "Incoming Rate (msg/s)",
           "refId": "A"
         },
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "rate(mosquitto_broker_messages_sent_total[1m])",
+          "expr": "rate(mosquitto_messages_sent_total[1m])",
           "legendFormat": "Outgoing Rate (msg/s)",
           "refId": "B"
         }
@@ -518,13 +518,13 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "rate(mosquitto_broker_bytes_received_total[1m])",
+          "expr": "rate(mosquitto_bytes_received_total[1m])",
           "legendFormat": "Inbound Bytes/s",
           "refId": "A"
         },
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "rate(mosquitto_broker_bytes_sent_total[1m])",
+          "expr": "rate(mosquitto_bytes_sent_total[1m])",
           "legendFormat": "Outbound Bytes/s",
           "refId": "B"
         }
