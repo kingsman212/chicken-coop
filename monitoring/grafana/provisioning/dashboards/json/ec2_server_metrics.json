@@ -21,70 +21,58 @@
   "links": [],
   "liveNow": false,
   "panels": [
+
+    {
+      "gridPos": { "h": 3, "w": 24, "x": 0, "y": 0 },
+      "id": 999,
+      "options": {
+        "content": "<div style=\"display:flex;align-items:center;justify-content:center;height:100%;background:linear-gradient(135deg,#1a1a2e 0%,#16213e 40%,#0f3460 100%);border-radius:8px;padding:12px 24px;\">\n  <div style=\"text-align:center;\">\n    <div style=\"font-size:28px;font-weight:700;color:#e94560;letter-spacing:2px;\">🐔 SmartCoop</div>\n    <div style=\"font-size:13px;color:#a8b2d8;margin-top:4px;letter-spacing:1px;\">Chicken Coop IoT Monitoring — EC2 Server Dashboard</div>\n  </div>\n</div>",
+        "mode": "html"
+      },
+      "title": "",
+      "transparent": true,
+      "type": "text"
+    },
+
     {
       "collapsed": false,
-      "gridPos": {
-        "h": 1,
-        "w": 24,
-        "x": 0,
-        "y": 0
-      },
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 3 },
       "id": 100,
-      "title": "EC2 Server - System Overview",
+      "title": "🖥️ EC2 Server — System Overview",
       "type": "row"
     },
+
     {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "Prometheus"
-      },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
       "fieldConfig": {
         "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
+          "color": { "mode": "thresholds" },
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
             "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
+              { "color": "green", "value": null }
             ]
           },
-          "unit": "s"
+          "unit": "s",
+          "noValue": "N/A"
         },
         "overrides": []
       },
-      "gridPos": {
-        "h": 4,
-        "w": 6,
-        "x": 0,
-        "y": 1
-      },
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 4 },
       "id": 1,
       "options": {
-        "colorMode": "value",
+        "colorMode": "background",
         "graphMode": "none",
-        "justifyMode": "auto",
+        "justifyMode": "center",
         "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
         "textMode": "auto"
       },
-      "pluginVersion": "10.0.0",
+      "pluginVersion": "11.1.0",
       "targets": [
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "Prometheus"
-          },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
           "editorMode": "code",
           "expr": "time() - node_boot_time_seconds",
           "legendFormat": "Uptime",
@@ -92,69 +80,43 @@
           "refId": "A"
         }
       ],
-      "title": "System Uptime",
+      "title": "⏱️ System Uptime",
       "type": "stat"
     },
+
     {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "Prometheus"
-      },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
       "fieldConfig": {
         "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
+          "color": { "mode": "thresholds" },
           "mappings": [],
           "max": 100,
           "min": 0,
           "thresholds": {
             "mode": "absolute",
             "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "orange",
-                "value": 70
-              },
-              {
-                "color": "red",
-                "value": 85
-              }
+              { "color": "green", "value": null },
+              { "color": "orange", "value": 70 },
+              { "color": "red", "value": 85 }
             ]
           },
-          "unit": "percent"
+          "unit": "percent",
+          "noValue": "N/A"
         },
         "overrides": []
       },
-      "gridPos": {
-        "h": 4,
-        "w": 6,
-        "x": 6,
-        "y": 1
-      },
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 4 },
       "id": 2,
       "options": {
         "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
         "showThresholdLabels": false,
         "showThresholdMarkers": true
       },
-      "pluginVersion": "10.0.0",
+      "pluginVersion": "11.1.0",
       "targets": [
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "Prometheus"
-          },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
           "editorMode": "code",
           "expr": "100 - (avg by (instance) (rate(node_cpu_seconds_total{mode=\"idle\"}[1m])) * 100)",
           "legendFormat": "CPU Usage",
@@ -162,69 +124,43 @@
           "refId": "A"
         }
       ],
-      "title": "CPU Usage",
+      "title": "🔥 CPU Usage",
       "type": "gauge"
     },
+
     {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "Prometheus"
-      },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
       "fieldConfig": {
         "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
+          "color": { "mode": "thresholds" },
           "mappings": [],
           "max": 100,
           "min": 0,
           "thresholds": {
             "mode": "absolute",
             "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "orange",
-                "value": 75
-              },
-              {
-                "color": "red",
-                "value": 90
-              }
+              { "color": "green", "value": null },
+              { "color": "orange", "value": 75 },
+              { "color": "red", "value": 90 }
             ]
           },
-          "unit": "percent"
+          "unit": "percent",
+          "noValue": "N/A"
         },
         "overrides": []
       },
-      "gridPos": {
-        "h": 4,
-        "w": 6,
-        "x": 12,
-        "y": 1
-      },
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 4 },
       "id": 3,
       "options": {
         "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
         "showThresholdLabels": false,
         "showThresholdMarkers": true
       },
-      "pluginVersion": "10.0.0",
+      "pluginVersion": "11.1.0",
       "targets": [
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "Prometheus"
-          },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
           "editorMode": "code",
           "expr": "(1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100",
           "legendFormat": "RAM Usage",
@@ -232,69 +168,43 @@
           "refId": "A"
         }
       ],
-      "title": "RAM Usage",
+      "title": "💾 RAM Usage",
       "type": "gauge"
     },
+
     {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "Prometheus"
-      },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
       "fieldConfig": {
         "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
+          "color": { "mode": "thresholds" },
           "mappings": [],
           "max": 100,
           "min": 0,
           "thresholds": {
             "mode": "absolute",
             "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "orange",
-                "value": 80
-              },
-              {
-                "color": "red",
-                "value": 90
-              }
+              { "color": "green", "value": null },
+              { "color": "orange", "value": 80 },
+              { "color": "red", "value": 90 }
             ]
           },
-          "unit": "percent"
+          "unit": "percent",
+          "noValue": "N/A"
         },
         "overrides": []
       },
-      "gridPos": {
-        "h": 4,
-        "w": 6,
-        "x": 18,
-        "y": 1
-      },
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 4 },
       "id": 4,
       "options": {
         "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
         "showThresholdLabels": false,
         "showThresholdMarkers": true
       },
-      "pluginVersion": "10.0.0",
+      "pluginVersion": "11.1.0",
       "targets": [
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "Prometheus"
-          },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
           "editorMode": "code",
           "expr": "100 - ((node_filesystem_avail_bytes{mountpoint=\"/rootfs\"} * 100) / node_filesystem_size_bytes{mountpoint=\"/rootfs\"}) or 100 - ((node_filesystem_avail_bytes{mountpoint=\"/\"} * 100) / node_filesystem_size_bytes{mountpoint=\"/\"})",
           "legendFormat": "Disk Usage",
@@ -302,276 +212,247 @@
           "refId": "A"
         }
       ],
-      "title": "Root Disk Usage",
+      "title": "📀 Root Disk Usage",
       "type": "gauge"
     },
+
     {
       "collapsed": false,
-      "gridPos": {
-        "h": 1,
-        "w": 24,
-        "x": 0,
-        "y": 5
-      },
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 8 },
       "id": 200,
       "title": "📡 MQTT Broker & IoT Traffic Overview",
       "type": "row"
     },
+
     {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "Prometheus"
-      },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
       "fieldConfig": {
         "defaults": {
-          "color": {
-            "mode": "thresholds"
+          "color": { "mode": "thresholds" },
+          "mappings": [
+            { "options": { "0": { "color": "red", "index": 0, "text": "DOWN" }, "1": { "color": "green", "index": 1, "text": "UP" } }, "type": "value" }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "green", "value": 1 }
+            ]
           },
+          "unit": "short",
+          "noValue": "DOWN"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 4, "w": 4, "x": 0, "y": 9 },
+      "id": 210,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "auto"
+      },
+      "pluginVersion": "11.1.0",
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "up{job=\"mosquitto_exporter\"}",
+          "legendFormat": "Broker Status",
+          "refId": "A"
+        }
+      ],
+      "title": "🔌 MQTT Broker Status",
+      "type": "stat"
+    },
+
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
             "steps": [
-              {
-                "color": "red",
-                "value": null
-              },
-              {
-                "color": "green",
-                "value": 1
-              }
+              { "color": "red", "value": null },
+              { "color": "green", "value": 1 }
             ]
           },
-          "unit": "short"
+          "unit": "short",
+          "noValue": "0"
         },
         "overrides": []
       },
-      "gridPos": {
-        "h": 4,
-        "w": 6,
-        "x": 0,
-        "y": 6
-      },
+      "gridPos": { "h": 4, "w": 5, "x": 4, "y": 9 },
       "id": 201,
       "options": {
-        "colorMode": "value",
+        "colorMode": "background",
         "graphMode": "area",
-        "justifyMode": "auto",
+        "justifyMode": "center",
         "orientation": "auto",
-        "reduceOptions": {
-          "calcs": ["lastNotNull"],
-          "fields": "",
-          "values": false
-        },
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
         "textMode": "auto"
       },
+      "pluginVersion": "11.1.0",
       "targets": [
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "Prometheus"
-          },
-          "expr": "mosquitto_connected_clients or mosquitto_clients_connected",
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "mosquitto_clients_connected",
           "legendFormat": "Connected Clients",
           "refId": "A"
         }
       ],
-      "title": "MQTT Connected Clients",
+      "title": "👥 Connected Clients",
       "type": "stat"
     },
+
     {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "Prometheus"
-      },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
       "fieldConfig": {
         "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
+          "color": { "mode": "thresholds" },
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
             "steps": [
-              {
-                "color": "blue",
-                "value": null
-              }
+              { "color": "blue", "value": null }
             ]
           },
-          "unit": "short"
+          "unit": "short",
+          "noValue": "0"
         },
         "overrides": []
       },
-      "gridPos": {
-        "h": 4,
-        "w": 6,
-        "x": 6,
-        "y": 6
-      },
+      "gridPos": { "h": 4, "w": 5, "x": 9, "y": 9 },
       "id": 202,
       "options": {
-        "colorMode": "value",
+        "colorMode": "background",
         "graphMode": "none",
-        "justifyMode": "auto",
+        "justifyMode": "center",
         "orientation": "auto",
-        "reduceOptions": {
-          "calcs": ["lastNotNull"],
-          "fields": "",
-          "values": false
-        },
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
         "textMode": "auto"
       },
+      "pluginVersion": "11.1.0",
       "targets": [
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "Prometheus"
-          },
-          "expr": "mosquitto_subscriptions_total or mosquitto_subscriptions_count",
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "mosquitto_subscriptions_count",
           "legendFormat": "Subscriptions",
           "refId": "A"
         }
       ],
-      "title": "MQTT Subscriptions",
+      "title": "📬 Active Subscriptions",
       "type": "stat"
     },
+
     {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "Prometheus"
-      },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
       "fieldConfig": {
         "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
+          "color": { "mode": "thresholds" },
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
             "steps": [
-              {
-                "color": "purple",
-                "value": null
-              }
+              { "color": "purple", "value": null }
             ]
           },
-          "unit": "short"
+          "unit": "short",
+          "noValue": "0"
         },
         "overrides": []
       },
-      "gridPos": {
-        "h": 4,
-        "w": 6,
-        "x": 12,
-        "y": 6
-      },
+      "gridPos": { "h": 4, "w": 5, "x": 14, "y": 9 },
       "id": 203,
       "options": {
-        "colorMode": "value",
+        "colorMode": "background",
         "graphMode": "area",
-        "justifyMode": "auto",
+        "justifyMode": "center",
         "orientation": "auto",
-        "reduceOptions": {
-          "calcs": ["lastNotNull"],
-          "fields": "",
-          "values": false
-        },
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
         "textMode": "auto"
       },
+      "pluginVersion": "11.1.0",
       "targets": [
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "Prometheus"
-          },
-          "expr": "mosquitto_messages_received_total or mosquitto_publish_messages_received_total",
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "mosquitto_broker_messages_received_total",
           "legendFormat": "Messages In",
           "refId": "A"
         }
       ],
-      "title": "MQTT Total Messages In",
+      "title": "📥 Total Messages In",
       "type": "stat"
     },
+
     {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "Prometheus"
-      },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
       "fieldConfig": {
         "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
+          "color": { "mode": "thresholds" },
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
             "steps": [
-              {
-                "color": "orange",
-                "value": null
-              }
+              { "color": "orange", "value": null }
             ]
           },
-          "unit": "short"
+          "unit": "short",
+          "noValue": "0"
         },
         "overrides": []
       },
-      "gridPos": {
-        "h": 4,
-        "w": 6,
-        "x": 18,
-        "y": 6
-      },
+      "gridPos": { "h": 4, "w": 5, "x": 19, "y": 9 },
       "id": 204,
       "options": {
-        "colorMode": "value",
+        "colorMode": "background",
         "graphMode": "area",
-        "justifyMode": "auto",
+        "justifyMode": "center",
         "orientation": "auto",
-        "reduceOptions": {
-          "calcs": ["lastNotNull"],
-          "fields": "",
-          "values": false
-        },
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
         "textMode": "auto"
       },
+      "pluginVersion": "11.1.0",
       "targets": [
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "Prometheus"
-          },
-          "expr": "mosquitto_messages_sent_total or mosquitto_publish_messages_sent_total",
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "mosquitto_broker_messages_sent_total",
           "legendFormat": "Messages Out",
           "refId": "A"
         }
       ],
-      "title": "MQTT Total Messages Out",
+      "title": "📤 Total Messages Out",
       "type": "stat"
     },
+
     {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "Prometheus"
-      },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
       "fieldConfig": {
         "defaults": {
+          "color": { "fixedColor": "green", "mode": "fixed" },
           "custom": {
             "drawStyle": "line",
             "lineInterpolation": "smooth",
             "lineWidth": 2,
-            "fillOpacity": 15
+            "fillOpacity": 20,
+            "gradientMode": "opacity",
+            "spanNulls": false
           },
-          "unit": "msgs"
+          "unit": "short"
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "Outgoing Rate (msg/s)" },
+            "properties": [
+              { "id": "color", "value": { "fixedColor": "orange", "mode": "fixed" } }
+            ]
+          }
+        ]
       },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 0,
-        "y": 10
-      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 13 },
       "id": 205,
       "options": {
         "legend": {
@@ -579,56 +460,52 @@
           "displayMode": "table",
           "placement": "bottom"
         },
-        "tooltip": {
-          "mode": "multi"
-        }
+        "tooltip": { "mode": "multi" }
       },
       "targets": [
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "Prometheus"
-          },
-          "expr": "rate(mosquitto_messages_received_total[1m]) or rate(mosquitto_publish_messages_received_total[1m])",
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "rate(mosquitto_broker_messages_received_total[1m])",
           "legendFormat": "Incoming Rate (msg/s)",
           "refId": "A"
         },
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "Prometheus"
-          },
-          "expr": "rate(mosquitto_messages_sent_total[1m]) or rate(mosquitto_publish_messages_sent_total[1m])",
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "rate(mosquitto_broker_messages_sent_total[1m])",
           "legendFormat": "Outgoing Rate (msg/s)",
           "refId": "B"
         }
       ],
-      "title": "MQTT Message Rate (Messages / Sec)",
+      "title": "📈 MQTT Message Rate (msg/s)",
       "type": "timeseries"
     },
+
     {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "Prometheus"
-      },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
       "fieldConfig": {
         "defaults": {
+          "color": { "fixedColor": "blue", "mode": "fixed" },
           "custom": {
             "drawStyle": "line",
             "lineInterpolation": "smooth",
             "lineWidth": 2,
-            "fillOpacity": 15
+            "fillOpacity": 20,
+            "gradientMode": "opacity",
+            "spanNulls": false
           },
           "unit": "binBps"
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "Outbound Bytes/s" },
+            "properties": [
+              { "id": "color", "value": { "fixedColor": "red", "mode": "fixed" } },
+              { "id": "custom.transform", "value": "negative-Y" }
+            ]
+          }
+        ]
       },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 12,
-        "y": 10
-      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 13 },
       "id": 206,
       "options": {
         "legend": {
@@ -636,68 +513,51 @@
           "displayMode": "table",
           "placement": "bottom"
         },
-        "tooltip": {
-          "mode": "multi"
-        }
+        "tooltip": { "mode": "multi" }
       },
       "targets": [
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "Prometheus"
-          },
-          "expr": "rate(mosquitto_bytes_received_total[1m])",
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "rate(mosquitto_broker_bytes_received_total[1m])",
           "legendFormat": "Inbound Bytes/s",
           "refId": "A"
         },
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "Prometheus"
-          },
-          "expr": "- rate(mosquitto_bytes_sent_total[1m])",
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "rate(mosquitto_broker_bytes_sent_total[1m])",
           "legendFormat": "Outbound Bytes/s",
           "refId": "B"
         }
       ],
-      "title": "MQTT Network Throughput (Bytes / Sec)",
+      "title": "🌐 MQTT Network Throughput (Bytes/s)",
       "type": "timeseries"
     },
+
     {
       "collapsed": false,
-      "gridPos": {
-        "h": 1,
-        "w": 24,
-        "x": 0,
-        "y": 18
-      },
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 21 },
       "id": 101,
-      "title": "🖥️ CPU & Load History",
+      "title": "🔥 CPU & Load History",
       "type": "row"
     },
+
     {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "Prometheus"
-      },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
       "fieldConfig": {
         "defaults": {
           "custom": {
             "drawStyle": "line",
             "lineInterpolation": "smooth",
             "lineWidth": 2,
-            "fillOpacity": 15
+            "fillOpacity": 15,
+            "gradientMode": "opacity",
+            "spanNulls": false
           },
           "unit": "percent"
         },
         "overrides": []
       },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 0,
-        "y": 19
-      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 22 },
       "id": 5,
       "options": {
         "legend": {
@@ -705,16 +565,11 @@
           "displayMode": "table",
           "placement": "bottom"
         },
-        "tooltip": {
-          "mode": "single"
-        }
+        "tooltip": { "mode": "single" }
       },
       "targets": [
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "Prometheus"
-          },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
           "editorMode": "code",
           "expr": "sum by(mode) (rate(node_cpu_seconds_total[1m])) * 100",
           "legendFormat": "{{mode}}",
@@ -725,28 +580,22 @@
       "title": "CPU Utilization by Mode (%)",
       "type": "timeseries"
     },
+
     {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "Prometheus"
-      },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
       "fieldConfig": {
         "defaults": {
           "custom": {
             "drawStyle": "line",
             "lineInterpolation": "smooth",
             "lineWidth": 2,
-            "fillOpacity": 10
+            "fillOpacity": 10,
+            "gradientMode": "opacity"
           }
         },
         "overrides": []
       },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 12,
-        "y": 19
-      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 22 },
       "id": 6,
       "options": {
         "legend": {
@@ -754,34 +603,23 @@
           "displayMode": "table",
           "placement": "bottom"
         },
-        "tooltip": {
-          "mode": "single"
-        }
+        "tooltip": { "mode": "single" }
       },
       "targets": [
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "Prometheus"
-          },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
           "expr": "node_load1",
           "legendFormat": "Load 1m",
           "refId": "A"
         },
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "Prometheus"
-          },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
           "expr": "node_load5",
           "legendFormat": "Load 5m",
           "refId": "B"
         },
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "Prometheus"
-          },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
           "expr": "node_load15",
           "legendFormat": "Load 15m",
           "refId": "C"
@@ -790,41 +628,31 @@
       "title": "System Load Average",
       "type": "timeseries"
     },
+
     {
       "collapsed": false,
-      "gridPos": {
-        "h": 1,
-        "w": 24,
-        "x": 0,
-        "y": 27
-      },
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 30 },
       "id": 102,
       "title": "💾 Memory & Disk",
       "type": "row"
     },
+
     {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "Prometheus"
-      },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
       "fieldConfig": {
         "defaults": {
           "custom": {
             "drawStyle": "line",
             "lineInterpolation": "smooth",
             "lineWidth": 2,
-            "fillOpacity": 20
+            "fillOpacity": 20,
+            "gradientMode": "opacity"
           },
           "unit": "bytes"
         },
         "overrides": []
       },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 0,
-        "y": 28
-      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 31 },
       "id": 7,
       "options": {
         "legend": {
@@ -835,37 +663,25 @@
       },
       "targets": [
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "Prometheus"
-          },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
           "expr": "node_memory_MemTotal_bytes",
           "legendFormat": "Total RAM",
           "refId": "A"
         },
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "Prometheus"
-          },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
           "expr": "node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes",
           "legendFormat": "Used RAM",
           "refId": "B"
         },
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "Prometheus"
-          },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
           "expr": "node_memory_MemAvailable_bytes",
           "legendFormat": "Available RAM",
           "refId": "C"
         },
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "Prometheus"
-          },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
           "expr": "node_memory_Cached_bytes + node_memory_Buffers_bytes",
           "legendFormat": "Buffers / Cached",
           "refId": "D"
@@ -874,28 +690,22 @@
       "title": "Memory Breakdown",
       "type": "timeseries"
     },
+
     {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "Prometheus"
-      },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
       "fieldConfig": {
         "defaults": {
           "custom": {
             "drawStyle": "line",
             "lineInterpolation": "smooth",
-            "lineWidth": 2
+            "lineWidth": 2,
+            "gradientMode": "opacity"
           },
           "unit": "Bps"
         },
         "overrides": []
       },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 12,
-        "y": 28
-      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 31 },
       "id": 8,
       "options": {
         "legend": {
@@ -906,19 +716,13 @@
       },
       "targets": [
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "Prometheus"
-          },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
           "expr": "rate(node_disk_read_bytes_total[1m])",
           "legendFormat": "Read {{device}}",
           "refId": "A"
         },
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "Prometheus"
-          },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
           "expr": "rate(node_disk_written_bytes_total[1m])",
           "legendFormat": "Write {{device}}",
           "refId": "B"
@@ -927,41 +731,38 @@
       "title": "Disk I/O Throughput",
       "type": "timeseries"
     },
+
     {
       "collapsed": false,
-      "gridPos": {
-        "h": 1,
-        "w": 24,
-        "x": 0,
-        "y": 36
-      },
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 39 },
       "id": 103,
       "title": "🌐 Network Traffic",
       "type": "row"
     },
+
     {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "Prometheus"
-      },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
       "fieldConfig": {
         "defaults": {
           "custom": {
             "drawStyle": "line",
             "lineInterpolation": "smooth",
             "lineWidth": 2,
-            "fillOpacity": 15
+            "fillOpacity": 15,
+            "gradientMode": "opacity"
           },
           "unit": "binBps"
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": { "id": "byRegexp", "options": "Outbound.*" },
+            "properties": [
+              { "id": "custom.transform", "value": "negative-Y" }
+            ]
+          }
+        ]
       },
-      "gridPos": {
-        "h": 8,
-        "w": 24,
-        "x": 0,
-        "y": 37
-      },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 40 },
       "id": 9,
       "options": {
         "legend": {
@@ -972,47 +773,48 @@
       },
       "targets": [
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "Prometheus"
-          },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
           "expr": "rate(node_network_receive_bytes_total{device!~\"lo|docker.*|veth.*|br-.*\"}[1m])",
           "legendFormat": "Inbound ({{device}})",
           "refId": "A"
         },
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "Prometheus"
-          },
-          "expr": "- rate(node_network_transmit_bytes_total{device!~\"lo|docker.*|veth.*|br-.*\"}[1m])",
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "rate(node_network_transmit_bytes_total{device!~\"lo|docker.*|veth.*|br-.*\"}[1m])",
           "legendFormat": "Outbound ({{device}})",
           "refId": "B"
         }
       ],
       "title": "Network Traffic (In / Out)",
       "type": "timeseries"
+    },
+
+    {
+      "gridPos": { "h": 2, "w": 24, "x": 0, "y": 48 },
+      "id": 998,
+      "options": {
+        "content": "<div style=\"text-align:center;padding:8px;color:#6c757d;font-size:12px;\">\n  SmartCoop Monitoring Dashboard &nbsp;|&nbsp; Prometheus + Grafana + Mosquitto Exporter + Node Exporter &nbsp;|&nbsp; Auto-refresh: 10s\n</div>",
+        "mode": "html"
+      },
+      "title": "",
+      "transparent": true,
+      "type": "text"
     }
+
   ],
   "refresh": "10s",
-  "schemaVersion": 38,
+  "schemaVersion": 39,
   "style": "dark",
-  "tags": ["ec2", "prometheus", "server", "smartcoop", "mqtt"],
+  "tags": ["ec2", "prometheus", "server", "smartcoop", "mqtt", "iot"],
   "time": {
-    "from": "now-1h",
+    "from": "now-3h",
     "to": "now"
   },
   "timepicker": {
-    "refresh_intervals": [
-      "5s",
-      "10s",
-      "30s",
-      "1m",
-      "5m"
-    ]
+    "refresh_intervals": ["5s", "10s", "30s", "1m", "5m"]
   },
   "timezone": "browser",
-  "title": "EC2 Server - Host Monitoring",
-  "uid": "ec2-server-monitoring",
-  "version": 2
+  "title": "🐔 SmartCoop — IoT & EC2 Monitoring",
+  "uid": "smartcoop-monitoring",
+  "version": 3
 }
