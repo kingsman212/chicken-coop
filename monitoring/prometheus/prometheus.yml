@@ -10,3 +10,7 @@ scrape_configs:
   - job_name: 'node_exporter'
     static_configs:
       - targets: ['node-exporter:9100']
+
+  - job_name: 'mosquitto_exporter'
+    static_configs:
+      - targets: ['mosquitto-exporter:9234']

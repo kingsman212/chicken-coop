@@ -121,6 +121,20 @@ services:
       - /sys:/host/sys:ro
       - /:/rootfs:ro
 
+  # ── Mosquitto Exporter (MQTT Broker & Traffic Metrics) ────
+  mosquitto-exporter:
+    image: sapcc/mosquitto-exporter:latest
+    container_name: chicken_coop_mosquitto_exporter
+    restart: unless-stopped
+    command:
+      - '-mqtt.endpoint=tcp://mosquitto:1883'
+      - '-mqtt.user=${MQTT_USERNAME:-laravel_worker}'
+      - '-mqtt.pass=${MQTT_PASSWORD:-rezatugasakhir09}'
+    expose:
+      - "9234"
+    depends_on:
+      - mosquitto
+
   # ── Prometheus (Metrics Time-Series Database & Scraper) ────
   prometheus:
     image: prom/prometheus:v2.54.1
@@ -139,6 +153,7 @@ services:
       - prometheus_data:/prometheus
     depends_on:
       - node-exporter
+      - mosquitto-exporter
 
   # ── Grafana (Monitoring Dashboard Website) ──────────────────
   grafana:

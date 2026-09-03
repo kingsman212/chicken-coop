@@ -30,7 +30,7 @@
         "y": 0
       },
       "id": 100,
-      "title": "System Overview",
+      "title": "EC2 Server - System Overview",
       "type": "row"
     },
     {
@@ -313,8 +313,366 @@
         "x": 0,
         "y": 5
       },
+      "id": 200,
+      "title": "📡 MQTT Broker & IoT Traffic Overview",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "Prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 0,
+        "y": 6
+      },
+      "id": 201,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "Prometheus"
+          },
+          "expr": "mosquitto_connected_clients or mosquitto_clients_connected",
+          "legendFormat": "Connected Clients",
+          "refId": "A"
+        }
+      ],
+      "title": "MQTT Connected Clients",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "Prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 6,
+        "y": 6
+      },
+      "id": 202,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "Prometheus"
+          },
+          "expr": "mosquitto_subscriptions_total or mosquitto_subscriptions_count",
+          "legendFormat": "Subscriptions",
+          "refId": "A"
+        }
+      ],
+      "title": "MQTT Subscriptions",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "Prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "purple",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 12,
+        "y": 6
+      },
+      "id": 203,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "Prometheus"
+          },
+          "expr": "mosquitto_messages_received_total or mosquitto_publish_messages_received_total",
+          "legendFormat": "Messages In",
+          "refId": "A"
+        }
+      ],
+      "title": "MQTT Total Messages In",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "Prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "orange",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 18,
+        "y": 6
+      },
+      "id": 204,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "Prometheus"
+          },
+          "expr": "mosquitto_messages_sent_total or mosquitto_publish_messages_sent_total",
+          "legendFormat": "Messages Out",
+          "refId": "A"
+        }
+      ],
+      "title": "MQTT Total Messages Out",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "Prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "lineWidth": 2,
+            "fillOpacity": 15
+          },
+          "unit": "msgs"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 10
+      },
+      "id": 205,
+      "options": {
+        "legend": {
+          "calcs": ["mean", "max", "last"],
+          "displayMode": "table",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "Prometheus"
+          },
+          "expr": "rate(mosquitto_messages_received_total[1m]) or rate(mosquitto_publish_messages_received_total[1m])",
+          "legendFormat": "Incoming Rate (msg/s)",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "Prometheus"
+          },
+          "expr": "rate(mosquitto_messages_sent_total[1m]) or rate(mosquitto_publish_messages_sent_total[1m])",
+          "legendFormat": "Outgoing Rate (msg/s)",
+          "refId": "B"
+        }
+      ],
+      "title": "MQTT Message Rate (Messages / Sec)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "Prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "lineWidth": 2,
+            "fillOpacity": 15
+          },
+          "unit": "binBps"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 10
+      },
+      "id": 206,
+      "options": {
+        "legend": {
+          "calcs": ["mean", "max", "last"],
+          "displayMode": "table",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "Prometheus"
+          },
+          "expr": "rate(mosquitto_bytes_received_total[1m])",
+          "legendFormat": "Inbound Bytes/s",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "Prometheus"
+          },
+          "expr": "- rate(mosquitto_bytes_sent_total[1m])",
+          "legendFormat": "Outbound Bytes/s",
+          "refId": "B"
+        }
+      ],
+      "title": "MQTT Network Throughput (Bytes / Sec)",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 18
+      },
       "id": 101,
-      "title": "CPU & Load History",
+      "title": "🖥️ CPU & Load History",
       "type": "row"
     },
     {
@@ -338,7 +696,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 6
+        "y": 19
       },
       "id": 5,
       "options": {
@@ -387,7 +745,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 6
+        "y": 19
       },
       "id": 6,
       "options": {
@@ -438,10 +796,10 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 14
+        "y": 27
       },
       "id": 102,
-      "title": "Memory & Disk",
+      "title": "💾 Memory & Disk",
       "type": "row"
     },
     {
@@ -465,7 +823,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 15
+        "y": 28
       },
       "id": 7,
       "options": {
@@ -536,7 +894,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 15
+        "y": 28
       },
       "id": 8,
       "options": {
@@ -575,10 +933,10 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 23
+        "y": 36
       },
       "id": 103,
-      "title": "Network Traffic",
+      "title": "🌐 Network Traffic",
       "type": "row"
     },
     {
@@ -602,7 +960,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 24
+        "y": 37
       },
       "id": 9,
       "options": {
@@ -639,7 +997,7 @@
   "refresh": "10s",
   "schemaVersion": 38,
   "style": "dark",
-  "tags": ["ec2", "prometheus", "server", "smartcoop"],
+  "tags": ["ec2", "prometheus", "server", "smartcoop", "mqtt"],
   "time": {
     "from": "now-1h",
     "to": "now"
@@ -656,5 +1014,5 @@
   "timezone": "browser",
   "title": "EC2 Server - Host Monitoring",
   "uid": "ec2-server-monitoring",
-  "version": 1
+  "version": 2
 }
