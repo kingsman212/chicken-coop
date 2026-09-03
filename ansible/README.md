@@ -15,6 +15,10 @@ Skrip ini akan secara otomatis melakukan:
    - **phpMyAdmin UI** (Database Management Tool di Port 8080)
    - **Mosquitto MQTT Broker v2.0** (Port 1883 dengan Autentikasi)
    - **MQTT Background Worker** (`php artisan mqtt:listen`)
+   - **Monitoring Stack**:
+     - **Grafana** (Dashboard Monitoring Server di Port 3000)
+     - **Prometheus** (Time-series Scraper di Port 9090)
+     - **Node Exporter** (Host Metrics Collector di Port internal 9100)
 
 ---
 
@@ -25,6 +29,7 @@ Skrip ini akan secara otomatis melakukan:
    - **Port 22 (SSH)**: Untuk koneksi Ansible.
    - **Port 80 (HTTP)**: Untuk akses Aplikasi Web SmartCoop via Nginx.
    - **Port 8080 (Custom TCP)**: Untuk akses antarmuka database **phpMyAdmin**.
+   - **Port 3000 (Custom TCP)**: Untuk akses Dashboard Monitoring **Grafana**.
    - **Port 1883 (MQTT)**: Untuk protokol komunikasi sensor IoT ESP8266.
 3. **Ansible Terinstall** di mesin lokal / controller Anda.
 
@@ -72,6 +77,8 @@ bash scripts/setup-mqtt-auth.sh
 ## 📊 Hasil Deployment
 Setelah playbook selesai dijalankan:
 - **Aplikasi Web**: `http://<IP_EC2_PUBLIC>` (Port 80 via Nginx).
+- **Grafana Monitoring**: `http://<IP_EC2_PUBLIC>:3000` (User: `admin`, Pass: `admin123` atau sesuai `.env.docker`).
 - **phpMyAdmin**: `http://<IP_EC2_PUBLIC>:8080` (Kelola database MySQL via browser).
+- **Prometheus UI**: `http://<IP_EC2_PUBLIC>:9090`.
 - **Mosquitto MQTT**: `<IP_EC2_PUBLIC>:1883`.
-- **MySQL 8.0 & Worker MQTT**: Berjalan otomatis secara terisolasi di dalam container Docker.
+- **MySQL 8.0, Node Exporter & Worker MQTT**: Berjalan otomatis secara terisolasi di dalam container Docker.

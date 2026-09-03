@@ -1,0 +1,12 @@
+apiVersion: 1
+
+providers:
+  - name: 'Server Monitoring'
+    orgId: 1
+    folder: 'EC2 Monitoring'
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 15
+    allowUiUpdates: true
+    options:
+      path: /etc/grafana/provisioning/dashboards/json

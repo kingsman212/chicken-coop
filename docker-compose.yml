@@ -104,8 +104,65 @@ services:
       db:
         condition: service_healthy
 
+  # ── Node Exporter (EC2 Host Metrics Collector) ─────────────
+  node-exporter:
+    image: prom/node-exporter:v1.8.2
+    container_name: chicken_coop_node_exporter
+    restart: unless-stopped
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.rootfs=/rootfs'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    expose:
+      - "9100"
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+
+  # ── Prometheus (Metrics Time-Series Database & Scraper) ────
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    container_name: chicken_coop_prometheus
+    restart: unless-stopped
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=15d'
+    expose:
+      - "9090"
+    ports:
+      - "9090:9090"   # Akses web Prometheus UI di http://<IP_SERVER>:9090 (opsional)
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    depends_on:
+      - node-exporter
+
+  # ── Grafana (Monitoring Dashboard Website) ──────────────────
+  grafana:
+    image: grafana/grafana:11.1.0
+    container_name: chicken_coop_grafana
+    restart: unless-stopped
+    ports:
+      - "3000:3000"   # Akses Dashboard Grafana di http://<IP_SERVER>:3000
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin123}
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_SERVER_ROOT_URL=%(protocol)s://%(domain)s:%(http_port)s/
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
+      - ./monitoring/grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
+    depends_on:
+      - prometheus
+
 volumes:
   db_data:
   mosquitto_data:
   mosquitto_log:
   public_assets:
+  prometheus_data:
+  grafana_data:
